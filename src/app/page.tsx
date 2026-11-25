@@ -1,455 +1,105 @@
-'use client';
+import { Aperture, ArrowUpRight, Film, Mail, Video, type LucideIcon } from 'lucide-react';
+import Hero from '@/components/Hero';
+import Leaderboard from '@/components/Leaderboard';
+import AppLauncher from '@/components/AppLauncher';
+import SkinPicker from '@/components/SkinPicker';
+import EmailCard from '@/components/EmailCard';
+import CommandPalette from '@/components/CommandPalette';
+import ThemeToggle from '@/components/ThemeToggle';
+import Logo from '@/components/Logo';
+import { SOCIALS } from '@/lib/site';
 
-import React, { useState, useEffect, useRef, useCallback, forwardRef, useMemo } from 'react';
-import { useTheme } from 'next-themes';
-import { Sun, Moon, Tv, Utensils, Film, Youtube, MessageSquare, Bot, Dumbbell, Instagram, Book, Wrench, Camera, Music } from 'lucide-react';
-import JumpGame from '@/components/JumpGame';
-import CherryBlossomAnimation from '@/components/CherryBlossomAnimation';
-
-declare global {
-  interface Window { disableBlossoms?: boolean; }
-}
-
-interface Particle {
-  id: number; x: number; y: number; vx: number; vy: number;
-  opacity: number; size: number; color: string; life: number;
-}
-
-interface IdleBotState {
-  status: 'hidden' | 'visible' | 'hiding';
-  top: number;
-  left: number;
-}
-
-const MAX_PARTICLES = 1000;
-const PARTICLES_PER_FRAME = 10;
-const IDLE_TIMEOUT = 5000;
-const HIDE_ANIMATION_DURATION = 1000;
-
-// --- Components ---
-
-const ThemeSwitcher = ({ onThemeToggle }: { onThemeToggle: () => void }) => {
-  const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
-
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) return <div className="w-10 h-10 p-2" />; 
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-    onThemeToggle();
-  };
-
-  return (
-    <button
-      onClick={toggleTheme}
-      className="emoji-button p-2 rounded-full hover:bg-card-light/50 dark:hover:bg-card-dark/50 transition-colors duration-200 text-2xl w-10 h-10 flex items-center justify-center"
-      aria-label="Toggle Theme"
-    >
-      {theme === 'dark' ? '☀️' : '🌙'}
-    </button>
-  );
+const SOCIAL_ICONS: Record<string, LucideIcon> = {
+  youtube: Video,
+  letterboxd: Film,
+  instagram: Aperture,
+  email: Mail,
 };
 
-const AppCard = forwardRef<HTMLAnchorElement, {
-  title: string; linkUrl: string; icon: React.ElementType; bgWrapperClass: string; iconColorClass: string;
-}>(({ title, linkUrl, icon: Icon, bgWrapperClass, iconColorClass }, ref) => {
-  const [rotate, setRotate] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2) * 30;
-    const y = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2) * -30;
-    setRotate({ x: y, y: x });
-  };
-
-  return (
-    <a
-      ref={ref} href={linkUrl} target="_blank" rel="noopener noreferrer"
-      className="app-card-link bg-card-light dark:bg-card-dark rounded-xl shadow-lg flex flex-col p-4 sm:p-6 text-center items-center aspect-square justify-center group"
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => { setIsHovered(false); setRotate({ x: 0, y: 0 }); }}
-      style={{
-        perspective: '1000px',
-        transform: `translateZ(${isHovered ? 30 : 0}px) scale(${isHovered ? 1.05 : 1}) rotateX(${rotate.x}deg) rotateY(${rotate.y}deg)`,
-        transition: 'transform 0.3s ease-out',
-        zIndex: 20
-      }}
-    >
-      <div className="app-card-inner pointer-events-none">
-        <div className={`icon-wrapper p-4 sm:p-5 rounded-full transition-colors duration-300 ${bgWrapperClass}`}>
-          <Icon className={`w-10 h-10 sm:w-12 sm:h-12 transition-colors duration-300 ${iconColorClass}`} />
-        </div>
-        <div className="title-wrapper mt-3 sm:mt-4">
-          <h3 className="text-base sm:text-lg font-semibold text-text-main-light dark:text-text-main-dark transition-colors duration-300">{title}</h3>
-        </div>
-      </div>
-    </a>
-  );
-});
-AppCard.displayName = 'AppCard';
-
-// --- Main Page ---
-
 export default function HomePage() {
-  const { theme } = useTheme();
-  const emailAddress = "jabroniwan@gmail.com";
-  const youtubeLink = "https://www.youtube.com/@cortaku";
-  const letterboxd = "https://letterboxd.com/ScreenPeeper/";
-  const instagram = "https://www.instagram.com/cort.uwu/";
-
-const apps = useMemo(() => [
-    { 
-      title: "Fitness", 
-      linkUrl: "https://sparky.cortaku.com", 
-      icon: Dumbbell, 
-      bgWrapperClass: "bg-pastel-pink/30 dark:bg-pastel-pink/20 group-hover:bg-pastel-pink/50 dark:group-hover:bg-pastel-pink/30", 
-      iconColorClass: "text-rose-500 dark:text-pastel-pink" 
-    },
-    { 
-      title: "Mealie", 
-      linkUrl: "https://mealie.cortaku.com", 
-      icon: Utensils, 
-      bgWrapperClass: "bg-pastel-green/30 dark:bg-pastel-green/20 group-hover:bg-pastel-green/50 dark:group-hover:bg-pastel-green/30", 
-      iconColorClass: "text-green-600 dark:text-pastel-green" 
-    },
-    { 
-      title: "Plex", 
-      linkUrl: "https://plex.cortaku.com/web/index.html", 
-      icon: Tv, 
-      bgWrapperClass: "bg-pastel-blue/30 dark:bg-pastel-blue/20 group-hover:bg-pastel-blue/50 dark:group-hover:bg-pastel-blue/30", 
-      iconColorClass: "text-sky-600 dark:text-pastel-blue" 
-    },
-    { 
-      title: "Audiobooks", 
-      linkUrl: "https://books.cortaku.com", 
-      icon: Book, 
-      bgWrapperClass: "bg-pastel-purple/30 dark:bg-pastel-purple/20 group-hover:bg-pastel-purple/50 dark:group-hover:bg-pastel-purple/30", 
-      iconColorClass: "text-violet-600 dark:text-pastel-purple" 
-    },
-    { 
-      title: "Photos", 
-      linkUrl: "https://photos.cortaku.com",
-      icon: Camera,
-      bgWrapperClass: "bg-pastel-yellow/30 dark:bg-pastel-yellow/20 group-hover:bg-pastel-yellow/50 dark:group-hover:bg-pastel-yellow/30", 
-      iconColorClass: "text-yellow-600 dark:text-pastel-yellow" 
-    },
-    { 
-      title: "Music", 
-      linkUrl: "https://music.cortaku.com",
-      icon: Music,
-      bgWrapperClass: "bg-pastel-pink/30 dark:bg-pastel-pink/20 group-hover:bg-pastel-pink/50 dark:group-hover:bg-pastel-pink/30", 
-      iconColorClass: "text-pink-400 dark:text-pastel-pink" 
-    },
-  ], []);
-
-  const [showGame, setShowGame] = useState(false);
-  const [, setToggleCount] = useState(0);
-  const [showRainbow, setShowRainbow] = useState(false);
-  const [idleBotState, setIdleBotState] = useState<IdleBotState>({ status: 'hidden', top: 0, left: 0 });
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const cardRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-  
-  // Canvas particle storage
-  const particlesRef = useRef<Particle[]>([]);
-  const mousePos = useRef({ x: 0, y: 0 });
-  
-  // Timer Refs
-  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const botHidingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const interactionIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Sync ref for the idle bot to prevent dependency loops
-  const idleBotStatusRef = useRef<IdleBotState['status']>('hidden');
-  useEffect(() => {
-    idleBotStatusRef.current = idleBotState.status;
-  }, [idleBotState.status]);
-
-  // Sync canvas size to window
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const handleResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Stop background animations when the game is active
-  useEffect(() => {
-    if (typeof window !== 'undefined') window.disableBlossoms = showGame;
-    if (showGame) setIdleBotState({ status: 'hidden', top: 0, left: 0 });
-  }, [showGame]);
-
-  // Canvas Drawing Loop
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    let animationFrameId: number;
-
-    const animate = () => {
-      if (!ctx || !canvas || showGame) return;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      particlesRef.current = particlesRef.current.filter(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x <= 0 || p.x >= canvas.width) p.vx *= -1;
-        if (p.y <= 0 || p.y >= canvas.height) p.vy *= -1;
-
-        p.life -= 1;
-        p.opacity = Math.max(0, p.life / 120);
-
-        if (p.life > 0) {
-          ctx.globalAlpha = p.opacity;
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
-          ctx.fill();
-          return true;
-        }
-        return false;
-      });
-
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    if (!showGame) {
-      animationFrameId = requestAnimationFrame(animate);
-    }
-    
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [showGame]);
-
-  // Idle Bot Logic
-  useEffect(() => {
-    if (showGame) return;
-
-    const hideBot = () => {
-      setIdleBotState(prev => ({ ...prev, status: 'hiding' }));
-      if (botHidingTimerRef.current) clearTimeout(botHidingTimerRef.current);
-      botHidingTimerRef.current = setTimeout(() => {
-        setIdleBotState({ status: 'hidden', top: 0, left: 0 });
-      }, HIDE_ANIMATION_DURATION);
-    };
-
-    const showBot = () => {
-      const cards = cardRefs.current.filter(Boolean);
-      if (cards.length === 0 || !containerRef.current) return;
-      
-      const isMobile = window.innerWidth < 768; 
-      
-      // On mobile, only use the first card. On desktop, pick randomly.
-      const target = isMobile ? cards[0] : cards[Math.floor(Math.random() * cards.length)];
-      if (!target) return;
-
-      const cardRect = target.getBoundingClientRect();
-      const containerRect = containerRef.current.getBoundingClientRect();
-
-      const botWidth = 80;
-      const maxLeftOffset = Math.max(0, cardRect.width - botWidth);
-      const randomXOffset = Math.random() * maxLeftOffset;
-
-      setIdleBotState({
-        status: 'visible',
-        top: cardRect.top - containerRect.top - 15,
-        left: cardRect.left - containerRect.left + randomXOffset
-      });
-    };
-
-    const resetIdleTimer = () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      if (idleBotStatusRef.current === 'visible') hideBot();
-      idleTimerRef.current = setTimeout(showBot, IDLE_TIMEOUT);
-    };
-
-    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    events.forEach(e => window.addEventListener(e, resetIdleTimer));
-    resetIdleTimer();
-
-    return () => {
-      events.forEach(e => window.removeEventListener(e, resetIdleTimer));
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      if (botHidingTimerRef.current) clearTimeout(botHidingTimerRef.current);
-    };
-  }, [showGame]);
-
-  // Rainbow Easter Egg
-  const handleThemeToggle = useCallback(() => {
-    setToggleCount(prev => {
-      const next = prev + 1;
-      if (next >= 5) {
-        setShowRainbow(true);
-        audioRef.current?.play().catch(() => {});
-        setTimeout(() => setShowRainbow(false), 3000);
-        return 0;
-      }
-      return next;
-    });
-  }, []);
-
-  // Particle Emitter
-  const emitParticles = useCallback((x: number, y: number) => {
-    if (showGame) return;
-    const colors = ['#fecdd3', '#bfdbfe', '#bbf7d0', '#fef08a', '#fbcfe8'];
-    const newParticles = Array.from({ length: PARTICLES_PER_FRAME }).map(() => ({
-      id: Math.random(), x, y,
-      vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
-      opacity: 1, size: Math.random() * 6 + 3,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      life: 120
-    }));
-    
-    particlesRef.current.push(...newParticles);
-    
-    // Prevent memory leaks
-    if (particlesRef.current.length > MAX_PARTICLES) {
-      particlesRef.current.splice(0, particlesRef.current.length - MAX_PARTICLES);
-    }
-  }, [showGame]);
-
-  // Interaction Handlers (Mouse & Touch merged logic)
-  const startInteraction = (clientX: number, clientY: number) => {
-    if (showGame) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    
-    mousePos.current = { x: clientX - rect.left, y: clientY - rect.top };
-    emitParticles(mousePos.current.x, mousePos.current.y);
-    
-    if (interactionIntervalRef.current) clearInterval(interactionIntervalRef.current);
-    interactionIntervalRef.current = setInterval(() => {
-      emitParticles(mousePos.current.x, mousePos.current.y);
-    }, 40);
-  };
-
-  const updateInteraction = (clientX: number, clientY: number) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) mousePos.current = { x: clientX - rect.left, y: clientY - rect.top };
-  };
-
-  const stopInteraction = () => {
-    if (interactionIntervalRef.current) {
-      clearInterval(interactionIntervalRef.current);
-      interactionIntervalRef.current = null;
-    }
-  };
-
   return (
-    <div
-      ref={containerRef}
-      onMouseDown={(e) => startInteraction(e.clientX, e.clientY)}
-      onMouseMove={(e) => updateInteraction(e.clientX, e.clientY)}
-      onMouseUp={stopInteraction}
-      onTouchStart={(e) => startInteraction(e.touches[0].clientX, e.touches[0].clientY)}
-      onTouchMove={(e) => updateInteraction(e.touches[0].clientX, e.touches[0].clientY)}
-      onTouchEnd={stopInteraction}
-      onTouchCancel={stopInteraction}
-      className={`relative min-h-screen w-full max-w-screen overflow-x-hidden flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden ${showRainbow ? 'bg-rainbow' : 'bg-bg-light dark:bg-bg-dark'} text-text-main-light dark:text-text-main-dark`}
-      style={{ touchAction: 'none' }}
-    >
-      <canvas 
-        ref={canvasRef} 
-        className="absolute inset-0 pointer-events-none z-5"
-      />
-
-      {/* Theme switch Easter Egg */}
-      {showRainbow ? (
-        <>
-          <div className="absolute inset-0 bg-white animate-flashRainbow z-40 pointer-events-none" />
-          <div className="absolute top-10 w-full text-4xl sm:text-6xl z-50 pointer-events-none whitespace-nowrap overflow-hidden animate-marquee-fast">
-            🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈🌈
-          </div>
-          <div className="absolute inset-0 z-40 pointer-events-none">
-                      {Array.from({ length: 20 }).map((_, i) => {
-                        const randomDuration = Math.random() * 3 + 2;
-                        const randomDelay = Math.random() * -5;
-                        const randomDirection = Math.random() > 0.5 ? 'alternate' : 'alternate-reverse';
-
-                        return (
-                          <div 
-                            key={i} 
-                            className="absolute animate-float"
-                            style={{ 
-                              left: `${Math.random() * 100}%`, 
-                              top: `${Math.random() * 100}%`, 
-                              fontSize: `${Math.random() * 30 + 20}px`,
-                              animationDuration: `${randomDuration}s`,
-                              animationDelay: `${randomDelay}s`,
-                              animationDirection: randomDirection
-                            }}
-                          >
-                            🌈
-                          </div>
-                        );
-                      })}
-                    </div>
-        </>
-      ) : null}
-
-      <audio ref={audioRef} src="/sounds/grunt_party.mp3" preload="auto" />
-      
-      {/* Cherry Blossom Animation - Rendered permanently, hidden via CSS to bypass compiler bugs */}
-        <div className={showGame ? 'hidden' : 'pointer-events-none absolute inset-0 z-10'}>
-          <CherryBlossomAnimation />
+    <>
+      <header className="site-header">
+        <a href="#top" className="brand">
+          <Logo className="size-7" />
+          <span>Cortaku</span>
+        </a>
+        <nav className="site-nav" aria-label="Sections">
+          <a href="#scores">Scores</a>
+          <a href="#apps">Apps</a>
+          <a href="#elsewhere">Elsewhere</a>
+        </nav>
+        <div className="site-tools">
+          <CommandPalette />
+          <ThemeToggle />
         </div>
+      </header>
 
-      {/* Idle Bot - Rendered permanently, hidden via CSS */}
-      <div className={showGame || idleBotState.status === 'hidden' ? 'hidden' : ''}>
-        <div
-          className={`idle-character ${idleBotState.status === 'visible' ? 'visible' : ''} ${idleBotState.status === 'hiding' ? 'hiding' : ''}`}
-          style={{ top: `${idleBotState.top}px`, left: `${idleBotState.left}px`, zIndex: 15 }}
-          aria-hidden="true"
-        >
-          <Bot className="w-10 h-10 text-text-main-light dark:text-text-main-dark" />
-        </div>
-      </div>
+      <main>
+        <Hero />
 
-      {/* Main Content */}
-      {showGame ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black touch-none h-[100dvh] w-screen overflow-hidden">
-          <JumpGame onExit={() => setShowGame(false)} gameTheme={theme === 'dark' ? 'night' : 'day'} />
-        </div>
-      ) : (
-        <>
-          <h1
-            onClick={() => setShowGame(true)}
-            className="select-none text-4xl sm:text-6xl font-bold mb-6 sm:mb-12 text-center text-transparent bg-clip-text bg-linear-to-r from-pastel-pink via-pastel-purple to-pastel-blue text-shadow z-20 cursor-pointer"
-            style={{ cursor: 'url(/cursors/keyblade-slash.png) 45 5, auto' }}
-          >
-            Cortaku
-          </h1>
-
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 md:gap-8 max-w-xl w-full z-20 relative mobile-card-stack">
-            {apps.map((app, index) => (
-              <div className="transition-transform" key={app.title}>
-                <AppCard {...app} ref={el => { cardRefs.current[index] = el; }} />
-              </div>
-            ))}
-          </div>
-
-          <footer className="absolute bottom-0 left-0 right-0 p-4 flex flex-col sm:flex-row justify-between items-center w-full z-20 gap-2">
-            <div className="flex space-x-4">
-              <a href={`mailto:${emailAddress}`} aria-label="Email" className="text-text-muted-light dark:text-text-muted-dark hover:text-pastel-purple transition duration-300"><MessageSquare className="w-5 h-5" /></a>
-              <a href={youtubeLink} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-text-muted-light dark:text-text-muted-dark hover:text-red-400 transition duration-300"><Youtube className="w-5 h-5" /></a>
-              <a href={letterboxd} target="_blank" rel="noopener noreferrer" aria-label="Letterboxd" className="text-text-muted-light dark:text-text-muted-dark hover:text-red-400 transition duration-300"><Film className="w-5 h-5" /></a>
-              <a href={instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-text-muted-light dark:text-text-muted-dark hover:text-pastel-purple transition duration-300"><Instagram className="w-5 h-5" /></a>
+        <section id="scores" className="section">
+          <div className="section-inner split">
+            <div>
+              <p className="eyebrow">The arcade</p>
+              <h2>One robot. One button. No mercy.</h2>
+              <p className="lede">
+                Jump the obstacles, outlast the speed-ups, and put your name on the board. It runs right here in the
+                page, on a phone or a keyboard.
+              </p>
+              <ul className="howto">
+                <li><kbd>Space</kbd> or tap to jump, hold to jump higher</li>
+                <li>Every zone is a new scene, and each one is faster</li>
+                <li>The daily run is one course for everyone, new each day</li>
+              </ul>
+              <h3 className="subhead">Robot skins</h3>
+              <p className="lede lede-sm">Beat a score to unlock its colours. Pick one and the robot wears it everywhere.</p>
+              <SkinPicker />
             </div>
-            <ThemeSwitcher onThemeToggle={handleThemeToggle} />
-          </footer>
-        </>
-      )}
-    </div>
+            <Leaderboard />
+          </div>
+        </section>
+
+        <section id="apps" className="section section-alt">
+          <div className="section-inner">
+            <p className="eyebrow">Home base</p>
+            <h2>The self-hosted corner</h2>
+            <p className="lede">Apps running on the Cortaku homelab. They need a login, so these are mostly for me.</p>
+            <AppLauncher />
+          </div>
+        </section>
+
+        <section id="elsewhere" className="section">
+          <div className="section-inner">
+            <p className="eyebrow">Elsewhere</p>
+            <h2>Find me around the internet</h2>
+            <ul className="socials">
+              {SOCIALS.map((social) => {
+                if (social.id === 'email') return <li key={social.id}><EmailCard /></li>;
+                const Icon = SOCIAL_ICONS[social.id];
+                return (
+                  <li key={social.id}>
+                    <a href={social.url} className="social" target="_blank" rel="noopener noreferrer">
+                      <Icon className="size-5" aria-hidden="true" />
+                      <span className="social-title">{social.title}</span>
+                      <span className="social-handle">{social.handle}</span>
+                      <ArrowUpRight className="size-4 social-arrow" aria-hidden="true" />
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </section>
+      </main>
+
+      <footer className="site-footer">
+        <span className="brand">
+          <Logo className="size-5" />
+          Cortaku
+        </span>
+        <span>Built with Next.js.</span>
+      </footer>
+    </>
   );
 }

@@ -1,0 +1,88 @@
+'use client';
+
+// What the browser remembers about the player.
+import { useSyncExternalStore } from 'react';
+
+export type Profile = {
+  best: number;
+  /** Best in any mode. Skins unlock against this. */
+  bestEver: number;
+  /** UTC date `dailyBest` belongs to. */
+  dailyDate: string;
+  dailyBest: number;
+  skin: string;
+  muted: boolean;
+  /** Last leaderboard name, offered again next time. */
+  name: string;
+};
+
+const DEFAULTS: Profile = { best: 0, bestEver: 0, dailyDate: '', dailyBest: 0, skin: 'classic', muted: false, name: '' };
+
+const KEY = 'cortaku.profile';
+/** Where the original game stored its high score. */
+const LEGACY_BEST_KEY = 'highScore';
+
+/** UTC, so every player shares one daily course. */
+export function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+let cached: Profile | null = null;
+const listeners = new Set<() => void>();
+
+function read(): Profile {
+  if (cached) return cached;
+  let stored: Partial<Profile> = {};
+  let legacyBest = 0;
+  try {
+    stored = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Profile>;
+    legacyBest = Number(localStorage.getItem(LEGACY_BEST_KEY)) || 0;
+  } catch {
+    // Storage blocked or corrupt: use defaults.
+  }
+  const profile = { ...DEFAULTS, ...stored };
+  profile.best = Math.max(profile.best, legacyBest);
+  profile.bestEver = Math.max(profile.bestEver, profile.best);
+  cached = profile;
+  return profile;
+}
+
+export function getProfile(): Profile {
+  return read();
+}
+
+export function updateProfile(patch: Partial<Profile>) {
+  cached = { ...read(), ...patch };
+  try {
+    localStorage.setItem(KEY, JSON.stringify(cached));
+    localStorage.setItem(LEGACY_BEST_KEY, String(cached.best));
+  } catch {
+    // Storage blocked: the change lasts for this visit only.
+  }
+  listeners.forEach((listener) => listener());
+}
+
+/** 0 if the stored daily best is from another day. */
+export function dailyBestToday(profile: Profile): number {
+  return profile.dailyDate === todayKey() ? profile.dailyBest : 0;
+}
+
+/** True when the run beat the player's best for that mode. */
+export function recordRun(mode: 'endless' | 'daily', score: number): boolean {
+  const profile = read();
+  const previous = mode === 'daily' ? dailyBestToday(profile) : profile.best;
+  if (score <= previous) return false;
+  const bestEver = Math.max(profile.bestEver, score);
+  if (mode === 'daily') updateProfile({ dailyDate: todayKey(), dailyBest: score, bestEver });
+  else updateProfile({ best: score, bestEver });
+  return true;
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function useProfile(): Profile {
+  return useSyncExternalStore(subscribe, read, () => DEFAULTS);
+}

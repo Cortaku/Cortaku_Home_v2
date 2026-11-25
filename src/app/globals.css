@@ -1,45 +1,13 @@
-/* styles/globals.css */
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Pastel Color Palette */
-  --color-pastel-pink: #fecdd3;
-  --color-pastel-blue: #bfdbfe;
-  --color-pastel-green: #bbf7d0;
-  --color-pastel-purple: #e9d5ff;
-  --color-pastel-yellow: #fef08a;
+  --font-sans: var(--font-display), ui-sans-serif, system-ui, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  --font-pixel: var(--font-pixel), ui-monospace, monospace;
 
-  /* Text Colors */
-  --color-text-main-light: #4b5563;
-  --color-text-main-dark: #d1d5db;
-  --color-text-muted-light: #6b7280;
-  --color-text-muted-dark: #9ca3af;
-
-  /* Background Colors */
-  --color-bg-light: #fdfdff;
-  --color-bg-dark: #2c3e50;
-
-  /* Card Colors */
-  --color-card-light: #ffffff;
-  --color-card-dark: #34495e;
-
-  /* UI Element Colors */
-  --color-icon-bg-light: rgba(191, 219, 254, 0.3);
-  --color-icon-bg-dark: rgba(233, 213, 255, 0.2);
-  --color-button-light: #a5b4fc;
-  --color-button-hover-light: #818cf8;
-  --color-button-dark: #c7d2fe;
-  --color-button-hover-dark: #a5b4fc;
-  --color-button-text: #1e1b4b;
-  --color-blossom: #fbcfe8;
-
-  /* Emoji-friendly Font Stack */
-  --font-sans: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
   --animate-float: crazy-rainbow 4s ease-in-out infinite alternate;
-  
-  /* 2. Define heavy translation, rotation, and scaling */
+
   @keyframes crazy-rainbow {
     0%   { transform: translate(0px, 0px) rotate(0deg) scale(0.8); }
     25%  { transform: translate(100px, -150px) rotate(180deg) scale(1.5); }
@@ -49,138 +17,588 @@
   }
 }
 
-/* Custom Text Shadow Utilities */
-@utility text-shadow {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+/* ---------- Brand tokens ---------- */
+
+:root {
+  --ink-fixed: #1d1736;      /* never changes with theme */
+  --bg: #fff7f5;
+  --bg-alt: #fdeef2;
+  --surface: #ffffff;
+  --ink: #1d1736;
+  --muted: #655e80;
+  --line: #ecdde6;
+  --accent: #ff5c8f;
+  --accent-soft: #ffd3e0;
+  --sky-top: #bfe3ff;
+  --sky-bottom: #ffe3ec;
+  --scene-h: max(100svh, 35rem);
+  color-scheme: light;
 }
-@utility text-shadow-md {
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+.dark {
+  --bg: #110e22;
+  --bg-alt: #17132e;
+  --surface: #1e1938;
+  --ink: #f4effc;
+  --muted: #a89fc6;
+  --line: #2f2852;
+  --accent: #ff7aa5;
+  --accent-soft: #4a2a4f;
+  --sky-top: #141033;
+  --sky-bottom: #2b2350;
+  color-scheme: dark;
 }
-@utility text-shadow-lg {
-  text-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 4.5rem;
 }
 
 body {
-  /* Applies base background colors for light/dark themes from Tailwind config. */
-  @apply bg-bg-light dark:bg-bg-dark;
-  /* Sets a custom cursor for the entire body. */
-  cursor: url('/cursors/keyblade.png') 45 5, auto; /* Hotspot defines the cursor's active point. */
-  /* Defines a fallback font stack with good emoji support. */
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
-  /* Improves touch responsiveness on mobile by preventing default browser actions. */
-  touch-action: manipulation;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-
-/* Defines a custom hover cursor for AppCard links. */
-.app-card-link:hover {
-  /* Rotated keyblade cursor for app card hover state. */
-  cursor: url('/cursors/keyblade-slash.png') 45 5, auto; /* Hotspot adjusted. */
+h1, h2 {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-wrap: balance;
 }
 
-/* --- CURSOR PRELOADING --- */
-/* Utility class to preload the hover cursor image, preventing delay on first hover. */
-/* Element is visually hidden but forces the browser to load the cursor resource. */
-.preload-slash-cursor {
-  cursor: url('/cursors/keyblade-slash.png') 45 5, auto; /* Application triggers resource load. */
-  position: absolute; /* Removes from document flow. */
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none; /* Element is not interactive. */
-  left: -9999px; /* Positioned off-screen. */
-  top: -9999px;
+kbd {
+  font-family: var(--font-pixel);
+  font-size: 0.8em;
+  padding: 0.1em 0.45em;
+  border: 2px solid currentColor;
+  border-radius: 0.3rem;
 }
 
-/* --- CHERRY BLOSSOM ANIMATION STYLES --- */
-/* Container for falling cherry blossoms, fixed to the viewport. */
-.blossom-container {
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---------- Header ---------- */
+
+.site-header {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0 0 auto 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem clamp(1rem, 4vw, 2rem);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.site-nav {
+  display: none;
+  gap: 1.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.site-nav a:hover { color: var(--accent); }
+@media (min-width: 48rem) { .site-nav { display: flex; } }
+
+.site-tools { display: flex; align-items: center; gap: 0.5rem; }
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.icon-button:hover { background: var(--accent-soft); }
+.theme-sun { display: none; }
+.dark .theme-sun { display: block; }
+.dark .theme-moon { display: none; }
+
+.palette-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.palette-trigger:hover { border-color: var(--accent); color: var(--ink); }
+.palette-trigger kbd { border-width: 1px; font-size: 0.7rem; }
+@media (max-width: 40rem) {
+  .palette-trigger-text, .palette-trigger kbd { display: none; }
+}
+
+/* ---------- Hero: the game's attract mode ---------- */
+
+.hero {
+  position: relative;
+  height: var(--scene-h);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(var(--sky-top), var(--sky-bottom));
+  view-transition-name: arcade;
+}
+
+.scene-stack {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+.scene-day,
+.dark .scene-night { opacity: 1; }
+.dark .scene-day { opacity: 0; }
+
+.scene-layer {
+  position: absolute;
+  inset: 0 -2rem;
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  image-rendering: pixelated;
+  transform: translateX(calc(var(--lean, 0) * var(--depth) * 1px));
+  transition: transform 0.5s ease-out;
+}
+.scene-layer:first-child { background-size: 100% 100%; }
+
+/* One tile of art is 16:9 at full height; slide exactly one tile and loop. */
+.scene-layer.is-moving {
+  right: calc(var(--scene-h) * -16 / 9 - 2rem);
+  animation: scene-drift linear infinite;
+}
+@keyframes scene-drift {
+  to { translate: calc(var(--scene-h) * -16 / 9) 0; }
+}
+
+.scene-ground {
+  --tile: calc(var(--scene-h) * 40 / 450);
+  position: absolute;
+  inset: 77.8% 0 auto 0;
+  height: calc(var(--scene-h) * 14 / 450);
+  background: repeating-linear-gradient(90deg, #e8e8e8 0 calc(var(--tile) * 0.9), transparent 0 var(--tile));
+  animation: ground-run 0.4s linear infinite;
+}
+@keyframes ground-run {
+  to { background-position-x: calc(var(--tile) * -1); }
+}
+
+.petals {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: 100vh; /* Spans full viewport height. */
-  pointer-events: none; /* Interactions pass through to elements underneath. */
-  overflow: hidden; /* Prevents scrollbars if blossoms exceed boundaries. */
-  z-index: 9999;    /* High z-index to render on top of most content. */
-  isolation: isolate; /* Creates a new stacking context. */
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
 }
 
-/* Combined animation for blossom falling and swaying movement. */
-@keyframes blossom-fall-combined {
-  0%   { transform: translateY(-10%) translateX(0px); opacity: 1; }
-  25%  { transform: translateY(25vh) translateX(5px); }  /* Sways right. */
-  50%  { transform: translateY(55vh) translateX(-5px); } /* Sways left. */
-  75%  { transform: translateY(85vh) translateX(5px); }  /* Sways right again. */
-  100% { transform: translateY(110vh) translateX(0px); opacity: 0; } /* Falls off screen and fades. */
-}
-
-/* Style for individual blossom petals. */
-.blossom {
+.mascot {
   position: absolute;
-  top: -10%; /* Starts above the viewport. */
-  left: var(--left); /* Horizontal start position is controlled by JavaScript via CSS variable. */
-  width: 15px;
-  height: 15px;
-  background-color: theme('colors.blossom'); /* Color defined in Tailwind theme configuration. */
-  border-radius: 50% 0 50% 0; /* Creates a petal shape. */
-  opacity: 1; /* Starts fully opaque. */
-
-  /* Animation properties, with duration and delay controlled by JS via CSS variables. */
-  animation-name: blossom-fall-combined;
-  animation-duration: var(--duration);
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-delay: var(--delay);
-
-  /* Performance optimizations for the animation. */
-  will-change: transform, opacity; /* Hints to the browser about upcoming changes. */
-  transform-style: preserve-3d;   /* Enables 3D transformations. */
-  backface-visibility: hidden;    /* Hides the back face of the element during transforms. */
-  transform: translateZ(0);       /* Promotes the element to its own compositor layer for smoother animation. */
+  left: clamp(1rem, 12.5%, 14rem);
+  bottom: 22.2%;
+  width: calc(var(--scene-h) * 80 / 450);
+  height: calc(var(--scene-h) * 80 / 450);
+  cursor: pointer;
+  z-index: 2;
 }
-
-/* --- IDLE CHARACTER (BOT) EASTER EGG STYLES --- */
-/* Animation for the bot character appearing. */
-@keyframes peek-out {
-  0%   { transform: translate(-30%, -30%) scale(0.8) rotate(0deg); opacity: 0; } /* Starts offset, small, and transparent. */
-  40%  { transform: translate(-50%, -50%) scale(1) rotate(-10deg); opacity: 1;} /* Moves to center, scales up, tilts. */
-  60%  { transform: translate(-50%, -50%) scale(1) rotate(5deg); }  /* Tilts other way. */
-  100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; } /* Settles in center. */
+.mascot-sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: url('/game-assets/robot-sprite.png') 0 0 / 500% 200% no-repeat;
+  image-rendering: pixelated;
 }
-
-/* Animation for the bot character hiding. */
-@keyframes hide-behind {
-  0%   { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; } /* Starts centered and visible. */
-  100% { transform: translate(-30%, -30%) scale(0.8); opacity: 0; } /* Moves offset, scales down, and fades. */
+.mascot.is-hopping .mascot-sprite { animation: hop 0.55s cubic-bezier(0.3, 0.7, 0.4, 1); }
+@keyframes hop {
+  50% { transform: translateY(-110%); }
 }
-
-/* Base style for the idle character. */
-.idle-character {
+.mascot-bubble {
   position: absolute;
-  font-size: 2.5rem; /* Base size, actual icon size might be from its component's class. */
-  z-index: 22; /* Stacking order. */
-  pointer-events: none; /* Not interactive. */
-  opacity: 0; /* Starts hidden. */
-  transform: translate(-50%, -50%); /* Centering adjustment for absolute positioning. */
-  transform-origin: center center;  /* Rotation and scaling origin. */
+  left: 60%;
+  bottom: 100%;
+  width: max-content;
+  max-width: 14rem;
+  padding: 0.4rem 0.7rem;
+  background: #fff;
+  color: var(--ink-fixed);
+  border: 3px solid var(--ink-fixed);
+  font-family: var(--font-pixel);
+  font-size: 0.9rem;
+  line-height: 1.2;
+  text-align: left;
+  animation: bubble-in 0.25s ease-out;
+}
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(6px); }
 }
 
-/* Style applied when the idle character is set to be visible. */
-.idle-character.visible {
-  opacity: 1;
-  animation: peek-out 1.5s ease-in-out forwards; /* Runs the peek-out animation and retains final state. */
+.hero-copy {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: calc(var(--scene-h) * 0.15) 1.25rem 0;
+  text-align: center;
+  pointer-events: none;
+}
+.hero-copy > * { pointer-events: auto; }
+
+.wordmark {
+  font-size: clamp(3.75rem, 15vw, 9.5rem);
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+  color: #fff;
+  -webkit-text-stroke: 0.035em var(--ink-fixed);
+  paint-order: stroke fill;
+  text-shadow: 0.055em 0.055em 0 var(--accent), 0.085em 0.085em 0 var(--ink-fixed);
 }
 
-/* Style applied when the idle character is set to be hiding. */
-.idle-character.hiding {
-  opacity: 1; /* Starts visible for the animation to properly execute from visible state. */
-  animation: hide-behind 1s ease-in forwards; /* Runs the hide-behind animation and retains final state. */
+.tagline {
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  backdrop-filter: blur(8px);
+  font-size: clamp(1rem, 2.4vw, 1.3rem);
+  font-weight: 600;
 }
 
-/* --- RAINBOW EASTER EGG STYLES --- */
-/* Keyframes for a flashing rainbow background effect. */
-@keyframes flashRainbow {
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.btn-arcade {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1.6rem;
+  background: var(--accent);
+  color: var(--ink-fixed);
+  border: 3px solid var(--ink-fixed);
+  box-shadow: 5px 5px 0 var(--ink-fixed);
+  font-family: var(--font-pixel);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s, background 0.2s;
+}
+.btn-arcade:hover { background: #ffd84d; transform: translate(-1px, -1px); box-shadow: 6px 6px 0 var(--ink-fixed); }
+.btn-arcade:active { transform: translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink-fixed); }
+.btn-arcade-sm { font-size: 1.05rem; padding: 0.5rem 1.1rem; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+.chip:hover { border-color: var(--accent); }
+
+.hero-hint {
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+@media (pointer: coarse) { .hero-hint { display: none; } }
+
+.scene-switch {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  font-family: var(--font-pixel);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.scene-switch:hover { border-color: var(--accent); }
+
+/* ---------- Sections ---------- */
+
+.section { padding: clamp(4rem, 9vw, 7rem) clamp(1.25rem, 4vw, 2rem); }
+.section-alt { background: var(--bg-alt); }
+.section-inner { max-width: 64rem; margin: 0 auto; }
+.section h2 { font-size: clamp(1.9rem, 4.5vw, 3rem); }
+
+.eyebrow {
+  margin-bottom: 0.6rem;
+  color: var(--accent);
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.lede {
+  max-width: 34rem;
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.split { display: grid; gap: 3rem; align-items: center; }
+@media (min-width: 56rem) { .split { grid-template-columns: 1fr 1fr; } }
+
+.howto { margin-top: 1.5rem; display: grid; gap: 0.6rem; color: var(--muted); }
+
+/* ---------- Scoreboard ---------- */
+
+.board {
+  padding: 1.25rem;
+  background: #16122b;
+  color: #f4effc;
+  border: 3px solid var(--ink-fixed);
+  box-shadow: 8px 8px 0 var(--accent);
+  font-family: var(--font-pixel);
+}
+.board-head, .board-list li {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+.board-head {
+  padding: 0 0.5rem 0.6rem;
+  border-bottom: 2px dashed #3b3364;
+  color: #8f86b5;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.board-head span:last-child { text-align: right; }
+.board-list { margin: 0.5rem 0 1.25rem; }
+.board-list li { padding: 0.4rem 0.5rem; font-size: 1.1rem; }
+.board-list li.is-first { color: #ffd84d; font-size: 1.3rem; }
+.board-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-score { font-variant-numeric: tabular-nums; }
+.board-rank { color: #8f86b5; }
+.board-note { padding: 2rem 0.5rem; color: #a89fc6; text-align: center; }
+
+/* ---------- App launcher ---------- */
+
+.launcher {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+.tile {
+  --hue: #ff8fb0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.tile[data-hue='green'] { --hue: #4cc38a; }
+.tile[data-hue='blue'] { --hue: #4aa8f0; }
+.tile[data-hue='purple'] { --hue: #a37cf0; }
+.tile[data-hue='yellow'] { --hue: #e0a81c; }
+.tile:hover {
+  transform: translateY(-3px);
+  border-color: var(--hue);
+  box-shadow: 0 10px 24px -14px var(--hue);
+}
+.tile-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--hue) 18%, transparent);
+  color: var(--hue);
+}
+.tile-text { display: grid; flex: 1; min-width: 0; }
+.tile-title { font-weight: 700; }
+.tile-blurb { color: var(--muted); font-size: 0.9rem; }
+.tile-arrow { color: var(--muted); opacity: 0; transition: opacity 0.15s; }
+.tile:hover .tile-arrow { opacity: 1; }
+
+.status {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--line);
+}
+.status[data-state='up'] { background: #35c47c; box-shadow: 0 0 0 4px color-mix(in srgb, #35c47c 22%, transparent); }
+.status[data-state='down'] { background: #ef5466; }
+.status[data-state='checking'] { animation: blink 1s ease-in-out infinite alternate; }
+@keyframes blink { to { opacity: 0.3; } }
+
+/* ---------- Socials ---------- */
+
+.socials {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+.social {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  column-gap: 0.75rem;
+  align-items: center;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.social:hover { border-color: var(--accent); transform: translateY(-3px); }
+.social-title { font-weight: 700; }
+.social-handle { grid-column: 2; color: var(--muted); font-size: 0.9rem; }
+.social-arrow { grid-row: 1; grid-column: 3; color: var(--muted); }
+.social-done { color: #35c47c; }
+.social-handle { overflow-wrap: anywhere; }
+
+/* ---------- Footer ---------- */
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem clamp(1.25rem, 4vw, 2rem);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.site-footer a { text-decoration: underline; text-underline-offset: 3px; }
+.site-footer a:hover { color: var(--accent); }
+.site-footer .brand { font-size: 1rem; color: var(--ink); }
+
+/* ---------- Quick search ---------- */
+
+.palette {
+  width: min(92vw, 32rem);
+  max-width: none;
+  margin: 14vh auto auto;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+}
+.palette::backdrop { background: rgb(17 14 34 / 0.55); backdrop-filter: blur(4px); }
+.palette-box {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.5);
+}
+.palette input {
+  width: 100%;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  font-size: 1.1rem;
+  outline: none;
+}
+.palette ul { max-height: 50vh; overflow-y: auto; padding: 0.4rem; }
+.palette li button {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.6rem;
+  text-align: left;
+  cursor: pointer;
+}
+.palette li[aria-selected='true'] button { background: var(--accent-soft); }
+.palette-hint { color: var(--muted); font-size: 0.85rem; }
+.palette-empty { padding: 1rem; color: var(--muted); text-align: center; }
+
+/* ---------- Game overlay ---------- */
+
+.arcade-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+  overscroll-behavior: none;
+  /* Keep the game clear of notches and home indicators. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  view-transition-name: arcade;
+}
+::view-transition-group(arcade) { animation-duration: 0.45s; }
+
+html[data-arcade-open] .scene-layer,
+html[data-arcade-open] .scene-ground { animation-play-state: paused; }
+
+/* ---------- Easter egg ---------- */
+
+.party {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0.85;
+  animation: flash-rainbow 1.2s linear infinite;
+  mix-blend-mode: hard-light;
+}
+.party span { position: absolute; }
+@keyframes flash-rainbow {
   0%   { background-color: red; }
   14%  { background-color: orange; }
   28%  { background-color: yellow; }
@@ -191,156 +609,304 @@ body {
   100% { background-color: red; }
 }
 
-/* Class to apply the flashing rainbow animation, typically for an overlay. */
-.animate-flashRainbow {
-  animation: flashRainbow 3.5s linear infinite;
+/* ---------- Respect "reduce motion" ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .scene-layer, .scene-ground, .party, .status, .mascot-sprite, .mascot-bubble { animation: none !important; }
+  .scene-layer { transition: none; }
 }
 
-/* Class for a gradient rainbow background with animation. */
-.bg-rainbow {
-  background: linear-gradient(270deg, red, orange, yellow, green, blue, indigo, violet);
-  background-size: 1400% 1400%; /* Large background size for smooth gradient transition during animation. */
-  animation: flashRainbow 7s linear infinite; /* Uses same keyframes, different duration. */
+/* ---------- Shared arcade bits ---------- */
+
+.btn-arcade:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-arcade-alt { background: #fff; }
+.btn-arcade-alt:hover { background: #ffd84d; }
+
+.subhead { margin-top: 2.5rem; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; }
+.lede-sm { margin-top: 0.4rem; font-size: 1rem; }
+
+.board-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.board-tabs button {
+  padding: 0.3rem 0.8rem;
+  border: 2px solid #3b3364;
+  color: #a89fc6;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.board-tabs button[aria-selected='true'] { background: #ffd84d; border-color: #ffd84d; color: var(--ink-fixed); }
+
+.skins { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; }
+.skin {
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  width: 4.25rem;
+  padding: 0.35rem 0.25rem;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 0.6rem;
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.skin:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--accent); }
+.skin[aria-pressed='true'] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.skin:disabled { cursor: not-allowed; }
+.skin:disabled .skin-art { filter: grayscale(1) brightness(0.55); opacity: 0.6; }
+.skin-art {
+  width: 2.75rem;
+  height: 2.75rem;
+  background: url('/game-assets/robot-sprite.png') 0 0 / 500% 200% no-repeat;
+  image-rendering: pixelated;
+}
+.skin-name { display: inline-flex; align-items: center; gap: 0.2rem; white-space: nowrap; }
+.skin-lock { width: 0.7rem; height: 0.7rem; }
+
+/* ---------- The game ---------- */
+
+.game-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  /* Size container for the cq* units below. */
+  container-type: size;
 }
 
-/* Ensures emoji buttons use appropriate emoji-supporting fonts. */
-.emoji-button {
-  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+.game-rotate-hint {
+  display: none;
+  position: absolute;
+  inset: auto 0 1.25rem 0;
+  z-index: 5;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  pointer-events: none;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.7);
+}
+.game-rotate-hint svg { width: 1.2rem; height: 1.2rem; animation: turn 2.4s ease-in-out infinite; }
+@keyframes turn { 50%, 100% { transform: rotate(90deg); } }
+
+.game-stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
 }
 
-/* Keyframes for horizontal marquee (scrolling text/elements). */
-@keyframes marquee {
-  0%   { transform: translateX(100%); } /* Starts off-screen to the right. */
-  100% { transform: translateX(-100%); } /* Ends off-screen to the left. */
+/* --u is one game pixel at the current scale. */
+.game-screen {
+  /* The largest 16:9 box that fits. */
+  --sw: min(100cqw, calc(100cqh * 16 / 9));
+  --u: calc(var(--sw) / 800);
+  position: relative;
+  width: var(--sw);
+  height: calc(var(--sw) * 9 / 16);
+  overflow: hidden;
+  font-family: var(--font-pixel);
+  font-size: calc(var(--u) * 16);
 }
 
-/* Class to apply a standard speed marquee animation. */
-.animate-marquee {
-  animation: marquee 8s linear infinite;
+.game-canvas { display: block; width: 100%; height: 100%; }
+
+.game-hud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: calc(var(--u) * 12);
+  pointer-events: none;
+  text-shadow: 0 calc(var(--u) * 2) 0 rgb(0 0 0 / 0.55);
+}
+.game-score { display: grid; justify-items: start; gap: calc(var(--u) * 2); }
+.game-score-now { font-size: calc(var(--u) * 34); line-height: 1; font-variant-numeric: tabular-nums; }
+.game-score-best { font-size: calc(var(--u) * 14); opacity: 0.9; }
+
+.game-tag {
+  display: inline-block;
+  padding: calc(var(--u) * 1) calc(var(--u) * 6);
+  background: #ffd84d;
+  color: var(--ink-fixed);
+  font-size: calc(var(--u) * 12);
+  text-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-/* Class to apply a faster marquee animation. */
-.animate-marquee-fast {
-  animation: marquee 2s linear infinite; /* Uses the same marquee keyframes, shorter duration. */
+.game-buttons { display: flex; gap: calc(var(--u) * 8); pointer-events: auto; }
+.game-buttons button {
+  display: grid;
+  place-items: center;
+  width: calc(var(--u) * 40);
+  height: calc(var(--u) * 40);
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.45);
+  color: #fff;
+  cursor: pointer;
+}
+.game-buttons button:hover { background: rgb(0 0 0 / 0.7); }
+.game-buttons svg { width: 50%; height: 50%; }
+
+.game-toast {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  padding: calc(var(--u) * 4) calc(var(--u) * 16);
+  background: var(--ink-fixed);
+  border: calc(var(--u) * 3) solid #fff;
+  font-size: calc(var(--u) * 26);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+  animation: toast 2.2s ease-out forwards;
+}
+@keyframes toast {
+  0%   { opacity: 0; transform: translate(-50%, 40%) scale(0.8); }
+  12%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  75%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -40%) scale(1); }
 }
 
-/* --- MOBILE UI ENHANCEMENTS --- */
-/* Styles applied specifically for screens up to 800px wide. */
-@media (max-width: 800px) {
-  /* Adjusts AppCard layout for smaller screens to be horizontal list-like items. */
-  .app-card-link {
-    width: 100% !important;
-    aspect-ratio: auto !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 1rem !important;
-    padding: 1rem !important;
-    border-radius: 0.75rem !important;
-    height: auto !important;
-  }
+.game-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 12);
+  padding: calc(var(--u) * 16);
+  background: rgb(14 11 32 / 0.6);
+  text-align: center;
+  animation: panel-in 0.2s ease-out;
+}
+@keyframes panel-in { from { opacity: 0; } }
 
-  .app-card-link h3 { /* Title within AppCard on mobile. */
-    font-size: 1rem !important;
-    text-align: left !important;
-    margin: 0 !important;
-  }
+.game-title {
+  font-family: var(--font-pixel);
+  font-size: calc(var(--u) * 54);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: calc(var(--u) * 4) calc(var(--u) * 4) 0 var(--accent);
+}
+.game-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: calc(var(--u) * 14); }
+.game-screen .btn-arcade { font-size: calc(var(--u) * 22); padding: calc(var(--u) * 8) calc(var(--u) * 18); gap: calc(var(--u) * 8); }
+.game-screen .btn-arcade svg { width: calc(var(--u) * 20); height: calc(var(--u) * 20); }
+.game-help { font-size: calc(var(--u) * 14); line-height: 1.5; opacity: 0.9; }
+.game-help kbd { font-size: 0.9em; }
 
-  /* Stacks AppCards vertically on mobile. */
-  .mobile-card-stack {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 1rem !important;
-  }
+.game-screen .skins { margin-top: 0; justify-content: center; gap: calc(var(--u) * 8); }
+.game-screen .skin {
+  width: calc(var(--u) * 62);
+  padding: calc(var(--u) * 4);
+  background: rgb(255 255 255 / 0.1);
+  border-color: rgb(255 255 255 / 0.25);
+  color: #fff;
+  font-size: calc(var(--u) * 11);
+}
+.game-screen .skin-art { width: calc(var(--u) * 40); height: calc(var(--u) * 40); }
+.game-screen .skin-lock { width: calc(var(--u) * 10); height: calc(var(--u) * 10); }
 
-  /* Adjusts inner layout of AppCard for horizontal display on mobile. */
-  .app-card-inner {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 1rem !important;
-    width: 100%;
-  }
+.game-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--font-pixel);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  cursor: pointer;
+}
+.game-link svg { width: 1.1em; height: 1.1em; }
+.game-link:hover { color: #ffd84d; }
 
-  /* Ensures icon wrapper in AppCard doesn't shrink and has reduced padding. */
-  .icon-wrapper {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem !important; 
-  }
+.game-died { width: calc(var(--u) * 380); max-width: 80%; image-rendering: pixelated; }
+.game-final {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 12);
+  font-size: calc(var(--u) * 48);
+  line-height: 1;
+}
+.game-unlock { color: #ffd84d; font-size: calc(var(--u) * 16); }
 
-  /* Allows title wrapper in AppCard to grow and aligns text. */
-  .title-wrapper {
-    flex-grow: 1;
-    display: flex;
-    align-items: center;
-  }
+.game-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(8 6 20 / 0.75);
+  backdrop-filter: blur(4px);
+}
+.game-dialog {
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  width: min(100%, 22rem);
+  padding: 1.5rem;
+  background: #16122b;
+  border: 3px solid #fff;
+  box-shadow: 8px 8px 0 var(--accent);
+  font-family: var(--font-pixel);
+  text-align: center;
+}
+.game-dialog .eyebrow { margin: 0; color: #ffd84d; }
+.game-dialog-score { font-size: 3.25rem; line-height: 1; }
+.game-dialog input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  background: #fff;
+  color: var(--ink-fixed);
+  border: 3px solid var(--ink-fixed);
+  font-size: 1.2rem;
+  text-align: center;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.game-error { color: #ff9db8; font-size: 0.9rem; }
+.game-dialog-board { width: min(100%, 26rem); max-height: 100%; padding: 0; border: 0; box-shadow: none; background: none; text-align: left; }
+.game-dialog-board .board { width: 100%; max-height: calc(100dvh - 2rem); overflow-y: auto; }
 
-  .title-wrapper h3 { /* Title within the title wrapper on mobile. */
-    font-size: 1rem !important;
-    text-align: left;
-    margin: 0;
+/* Phone held upright: turn the game sideways. Dialogs stay upright. */
+@media (orientation: portrait) and (pointer: coarse), (orientation: portrait) and (max-width: 600px) {
+  .game-stage {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: 100cqh;
+    height: 100cqw;
+    transform: translate(-50%, -50%) rotate(90deg);
   }
-
-  /* Reduces general h1 heading size on mobile. */
-  h1 { 
-    font-size: 2.5rem !important;
-  }
-
-  /* Changes footer positioning on mobile for simpler layout. */
-  footer {
-    position: relative !important; 
-  }
-
-  /* Adjusts scaling for AppCard wrappers on mobile if the .scale-90 class is used. */
-  .scale-90 { 
-    transform: scale(0.85); 
-  }
-
-  /* Adjusts idle character size and stacking order on mobile. */
-  .idle-character {
-    transform: translate(-50%, -50%) scale(0.9); 
-    z-index: 15 !important; /* Places it behind cards (z-index 20). */
-  }
+  .game-screen { --sw: min(100cqh, calc(100cqw * 16 / 9)); }
+  .game-rotate-hint { display: flex; }
 }
 
-/* --- JUMP GAME CANVAS STYLES --- */
-/* Base styles for the game canvas element. */
-.jump-game-canvas-styles {
-  display: block; /* Removes extra space that can appear below inline canvas. */
-  background-color: black; /* Fallback background, actual game draws over this. */
-  border-radius: 0.375rem; /* Equivalent to Tailwind's rounded-md. */
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* Tailwind's shadow-lg. */
-  border: 2px solid white;
+@media (prefers-reduced-motion: reduce) {
+  .game-toast, .game-panel { animation: none; }
+  .game-toast { transform: translateX(-50%); }
 }
 
-/* Styles for forcing landscape orientation for the JumpGame on mobile portrait views. */
-@media (max-width: 800px) and (orientation: portrait) {
-  .rotate-landscape-wrapper {
-    position: fixed; /* Takes over the screen. */
-    top: 0;
-    left: 0;
-    width: 100vh; /* Swaps viewport width and height for rotation. */
-    height: 100vw;
-    transform: rotate(-90deg) translateX(-100%); /* Rotates and shifts into view. */
-    transform-origin: top left; /* Sets rotation origin to top-left corner. */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: black; /* Background for the rotated area. */
-    z-index: 9999;    /* Ensures it's on top of all other page content. */
-    overflow: hidden; /* Hides any part of canvas that might stick out. */
-  }
-  
-  /* Ensures canvas within the rotated wrapper fills its new dimensions. */
-  .rotate-landscape-wrapper canvas, 
-  .rotate-landscape-wrapper .jump-game-canvas-styles { 
-    width: 100% !important;  /* Fills the rotated wrapper's width (original screen height). */
-    height: 100% !important; /* Fills the rotated wrapper's height (original screen width). */
-    display: block;
-    object-fit: fill; /* Stretches canvas to fill the rotated dimensions. */
-  }
+/* Finger-sized controls on touch screens. */
+@media (pointer: coarse) {
+  .game-buttons button { min-width: 2.75rem; min-height: 2.75rem; }
+  .game-screen .btn-arcade { min-height: 2.75rem; }
+  .game-screen .skin { min-width: 2.9rem; }
 }
