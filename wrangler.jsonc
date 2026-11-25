@@ -10,6 +10,10 @@
     "not_found_handling": "404-page",
     "run_worker_first": ["/api/*"]
   },
+  "routes": [
+    { "pattern": "www.cortaku.com", "custom_domain": true },
+    { "pattern": "cortaku.com", "custom_domain": true }
+  ],
   // Leaderboard keep-alive, every 12 hours.
   "triggers": { "crons": ["0 */12 * * *"] },
   "observability": { "enabled": true }
