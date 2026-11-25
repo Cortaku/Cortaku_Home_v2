@@ -13,7 +13,7 @@ The site is a single page with four parts:
 | Home base | Links to six self-hosted apps, each with a live up/down indicator. |
 | Elsewhere | YouTube, Letterboxd, Instagram and email. |
 
-A header carries section links, a quick search (Ctrl/Cmd+K) and a day/night toggle.
+A header carries section links and a day/night toggle.
 
 ## 2. Stack
 
@@ -60,7 +60,6 @@ src/
     Leaderboard.tsx       homepage wrapper for ScoreBoard
     SkinPicker.tsx        skin selection (used on the page and in the game)
     AppLauncher.tsx       app tiles with status dots
-    CommandPalette.tsx    Ctrl/Cmd+K quick search
     EmailCard.tsx         email link that also copies the address
     ThemeToggle.tsx, Logo.tsx
   game/
@@ -213,7 +212,6 @@ The same Supabase project holds an unrelated Mealie database. The second migrati
 - **Mascot.** The robot runs in place, hops when clicked, and speaks up after seven seconds of inactivity.
 - **Game launch.** Opening and closing the game uses the View Transitions API to morph between the hero scene and the game. The game code is loaded on demand.
 - **App launcher.** The Worker's `/api/status` sends a `HEAD` request to each app with a 4 s timeout and caches the result at the edge for 60 s. Any response below 500 counts as up, since a login redirect still means the app is running.
-- **Quick search.** Ctrl/Cmd+K opens a `<dialog>` listing the game, every app and link, the theme toggle and the scene switch, with arrow-key navigation.
 - **Email.** The email card opens a pre-addressed message and also copies the address, because a `mailto:` link does nothing on a machine with no mail app.
 - **Share card.** `opengraph-image.tsx` generates the social preview image at build time.
 - **Easter eggs.** Toggling the theme five times, or entering the Konami code, triggers a short rainbow party.

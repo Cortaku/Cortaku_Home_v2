@@ -4,6 +4,7 @@ import {
   type ObstacleKind,
 } from './sim';
 import { LAYER_SPEEDS, OBSTACLE_PAD, buildObstacleSprites, loadScene, type DayTime, type Scene } from './assets';
+import { DEFAULT_ROAD, drawRoad } from './road';
 import { SPRITE_COLUMNS, SPRITE_FRAMES, SPRITE_ROWS, type SkinSheet } from './skins';
 import { SCENE_COUNT } from '@/lib/site';
 
@@ -12,7 +13,6 @@ export type Phase = 'idle' | 'running' | 'paused' | 'dying' | 'over';
 export type EngineHooks = {
   onPhase: (phase: Phase) => void;
   onScore: (score: number) => void;
-  onZone: (zone: number) => void;
   onSound: (name: 'jump' | 'death' | 'zone') => void;
 };
 
@@ -26,7 +26,6 @@ export type EngineOptions = {
 
 type Particle = { life: number; max: number; x: number; y: number; vx: number; vy: number; size: number; color: string };
 
-const TILE = 40;
 const RUN_FRAME_SECONDS = 0.12;
 const HIT_STOP = 0.09;
 const DEATH_SECONDS = 0.85;
@@ -57,6 +56,7 @@ export class Engine {
   private idleDist = 0;
   private scene: Scene | null = null;
   private nextScene: Scene | null = null;
+  private lastRoadDist = 0;
   private fade = 0;
 
   // Presentation only; none of this affects the rules.
@@ -247,14 +247,13 @@ export class Engine {
     for (const event of this.sim.events) {
       if (event === 'jump') {
         this.stretch = 0.18;
-        this.puff(3, '#f1f1f1');
+        this.puff(3, this.road().edge);
         this.hooks.onSound('jump');
       } else if (event === 'land') {
         this.stretch = -0.2;
-        this.puff(5, '#f1f1f1');
+        this.puff(5, this.road().edge);
       } else if (event === 'zone') {
         this.loadSceneFor(this.sim.zone, false);
-        this.hooks.onZone(this.sim.zone);
         this.hooks.onSound('zone');
       } else if (event === 'death') {
         this.shake = 10;
@@ -300,6 +299,10 @@ export class Engine {
     const p = this.particles.find((q) => q.life <= 0);
     if (!p) return;
     p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.life = life; p.max = life; p.size = size; p.color = color;
+  }
+
+  private road() {
+    return (this.nextScene && this.fade > 0.5 ? this.nextScene : this.scene)?.road ?? DEFAULT_ROAD;
   }
 
   private puff(count: number, color: string) {
@@ -356,10 +359,12 @@ export class Engine {
       ctx.translate(Math.sin(this.clock * 95) * this.shake, Math.cos(this.clock * 71) * this.shake * 0.6);
     }
 
-    ctx.fillStyle = '#e8e8e8';
-    for (let x = -(dist % TILE) - TILE; x < VIEW_W + TILE; x += TILE) {
-      ctx.fillRect(this.snap(x), GROUND_Y, TILE - 4, 14);
-    }
+    // How far the road moved since the last frame drives its motion blur. A jump means a reset, not speed.
+    const moved = dist - this.lastRoadDist;
+    this.lastRoadDist = dist;
+    const smear = moved > 0 && moved < 120 ? moved : 0;
+    drawRoad(ctx, this.scene?.road ?? DEFAULT_ROAD, dist, smear, 1);
+    if (this.nextScene) drawRoad(ctx, this.nextScene.road, dist, smear, Math.min(1, this.fade));
 
     if (this.sprites && this.phase !== 'idle') {
       ctx.imageSmoothingEnabled = true;

@@ -132,25 +132,6 @@ kbd {
 .dark .theme-sun { display: block; }
 .dark .theme-moon { display: none; }
 
-.palette-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: 2.5rem;
-  padding: 0 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-.palette-trigger:hover { border-color: var(--accent); color: var(--ink); }
-.palette-trigger kbd { border-width: 1px; font-size: 0.7rem; }
-@media (max-width: 40rem) {
-  .palette-trigger-text, .palette-trigger kbd { display: none; }
-}
-
 /* ---------- Hero: the game's attract mode ---------- */
 
 .hero {
@@ -198,16 +179,37 @@ kbd {
   to { translate: calc(var(--scene-h) * -16 / 9) 0; }
 }
 
+/* Same road as the game (src/game/road.ts); Hero sets the --road-*-day/night colours from the scene. */
 .scene-ground {
-  --tile: calc(var(--scene-h) * 40 / 450);
+  --u: calc(var(--scene-h) / 450);
+  --road-edge: var(--road-edge-day, #a5aac3);
+  --road-top: var(--road-top-day, #636c97);
+  --road-lip: var(--road-lip-day, #29325c);
+  --road-face: var(--road-face-day, #37437a);
+  --road-speck: var(--road-speck-day, #838aac);
   position: absolute;
   inset: 77.8% 0 auto 0;
-  height: calc(var(--scene-h) * 14 / 450);
-  background: repeating-linear-gradient(90deg, #e8e8e8 0 calc(var(--tile) * 0.9), transparent 0 var(--tile));
-  animation: ground-run 0.4s linear infinite;
+  height: calc(var(--u) * 28);
+  background:
+    repeating-linear-gradient(90deg,
+      transparent 0 calc(var(--u) * 31), var(--road-speck) 0 calc(var(--u) * 35),
+      transparent 0 calc(var(--u) * 74), var(--road-speck) 0 calc(var(--u) * 76),
+      transparent 0 calc(var(--u) * 121), var(--road-speck) 0 calc(var(--u) * 126),
+      transparent 0 calc(var(--u) * 170))
+      0 calc(var(--u) * 6) / calc(var(--u) * 170) calc(var(--u) * 1) repeat-x,
+    linear-gradient(var(--road-edge) 0 calc(var(--u) * 2), var(--road-top) 0 calc(var(--u) * 12),
+      var(--road-lip) 0 calc(var(--u) * 13), var(--road-face) 0);
+  animation: road-run 1.9s linear infinite;
 }
-@keyframes ground-run {
-  to { background-position-x: calc(var(--tile) * -1); }
+.dark .scene-ground {
+  --road-edge: var(--road-edge-night, #92929d);
+  --road-top: var(--road-top-night, #424356);
+  --road-lip: var(--road-lip-night, #0a0a1c);
+  --road-face: var(--road-face-night, #0d0e26);
+  --road-speck: var(--road-speck-night, #696a78);
+}
+@keyframes road-run {
+  to { background-position: calc(var(--u) * -170) calc(var(--u) * 6), 0 0; }
 }
 
 .petals {
@@ -505,7 +507,16 @@ kbd {
 .social-handle { grid-column: 2; color: var(--muted); font-size: 0.9rem; }
 .social-arrow { grid-row: 1; grid-column: 3; color: var(--muted); }
 .social-done { color: #35c47c; }
-.social-handle { overflow-wrap: anywhere; }
+/* The address stays on one line: it may run under the copy icon and shrinks a little in narrow cards. */
+.social-mail { container-type: inline-size; }
+.social-email {
+  grid-column: 2 / -1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* The address is 12.8em wide; 2rem is the icon column and gap. */
+  font-size: min(0.9rem, calc((100cqi - 2rem) / 13));
+}
 
 /* ---------- Footer ---------- */
 
@@ -523,47 +534,6 @@ kbd {
 .site-footer a { text-decoration: underline; text-underline-offset: 3px; }
 .site-footer a:hover { color: var(--accent); }
 .site-footer .brand { font-size: 1rem; color: var(--ink); }
-
-/* ---------- Quick search ---------- */
-
-.palette {
-  width: min(92vw, 32rem);
-  max-width: none;
-  margin: 14vh auto auto;
-  padding: 0;
-  background: transparent;
-  color: var(--ink);
-}
-.palette::backdrop { background: rgb(17 14 34 / 0.55); backdrop-filter: blur(4px); }
-.palette-box {
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 1rem;
-  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.5);
-}
-.palette input {
-  width: 100%;
-  padding: 1rem 1.2rem;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-  font-size: 1.1rem;
-  outline: none;
-}
-.palette ul { max-height: 50vh; overflow-y: auto; padding: 0.4rem; }
-.palette li button {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  width: 100%;
-  padding: 0.6rem 0.8rem;
-  border-radius: 0.6rem;
-  text-align: left;
-  cursor: pointer;
-}
-.palette li[aria-selected='true'] button { background: var(--accent-soft); }
-.palette-hint { color: var(--muted); font-size: 0.85rem; }
-.palette-empty { padding: 1rem; color: var(--muted); text-align: center; }
 
 /* ---------- Game overlay ---------- */
 
@@ -762,26 +732,6 @@ html[data-arcade-open] .scene-ground { animation-play-state: paused; }
 .game-buttons button:hover { background: rgb(0 0 0 / 0.7); }
 .game-buttons svg { width: 50%; height: 50%; }
 
-.game-toast {
-  position: absolute;
-  top: 22%;
-  left: 50%;
-  padding: calc(var(--u) * 4) calc(var(--u) * 16);
-  background: var(--ink-fixed);
-  border: calc(var(--u) * 3) solid #fff;
-  font-size: calc(var(--u) * 26);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  pointer-events: none;
-  animation: toast 2.2s ease-out forwards;
-}
-@keyframes toast {
-  0%   { opacity: 0; transform: translate(-50%, 40%) scale(0.8); }
-  12%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  75%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -40%) scale(1); }
-}
-
 .game-panel {
   position: absolute;
   inset: 0;
@@ -900,8 +850,7 @@ html[data-arcade-open] .scene-ground { animation-play-state: paused; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .game-toast, .game-panel { animation: none; }
-  .game-toast { transform: translateX(-50%); }
+  .game-panel { animation: none; }
 }
 
 /* Finger-sized controls on touch screens. */

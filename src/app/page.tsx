@@ -4,7 +4,6 @@ import Leaderboard from '@/components/Leaderboard';
 import AppLauncher from '@/components/AppLauncher';
 import SkinPicker from '@/components/SkinPicker';
 import EmailCard from '@/components/EmailCard';
-import CommandPalette from '@/components/CommandPalette';
 import ThemeToggle from '@/components/ThemeToggle';
 import Logo from '@/components/Logo';
 import { SOCIALS } from '@/lib/site';
@@ -25,12 +24,11 @@ export default function HomePage() {
           <span>Cortaku</span>
         </a>
         <nav className="site-nav" aria-label="Sections">
-          <a href="#scores">Scores</a>
+          <a href="#arcade">Arcade</a>
           <a href="#apps">Apps</a>
           <a href="#elsewhere">Elsewhere</a>
         </nav>
         <div className="site-tools">
-          <CommandPalette />
           <ThemeToggle />
         </div>
       </header>
@@ -38,22 +36,21 @@ export default function HomePage() {
       <main>
         <Hero />
 
-        <section id="scores" className="section">
+        <section id="arcade" className="section">
           <div className="section-inner split">
             <div>
               <p className="eyebrow">The arcade</p>
               <h2>One robot. One button. No mercy.</h2>
               <p className="lede">
-                Jump the obstacles, outlast the speed-ups, and put your name on the board. It runs right here in the
-                page, on a phone or a keyboard.
+                Dodge obstacles, survive the speed-ups, and claim a spot on the leaderboards.
               </p>
               <ul className="howto">
-                <li><kbd>Space</kbd> or tap to jump, hold to jump higher</li>
-                <li>Every zone is a new scene, and each one is faster</li>
-                <li>The daily run is one course for everyone, new each day</li>
+                <li>Press <kbd>Space</kbd> or tap to jump; hold for higher airtime.</li>
+                <li>Clear each zone for a new backdrop and faster pace.</li>
+                <li>Compete on the Daily Run — one shared course, refreshed every 24 hours.</li>
               </ul>
               <h3 className="subhead">Robot skins</h3>
-              <p className="lede lede-sm">Beat a score to unlock its colours. Pick one and the robot wears it everywhere.</p>
+              <p className="lede lede-sm">Hit score milestones to unlock new colors. Equip one to customize your robot across every run.</p>
               <SkinPicker />
             </div>
             <Leaderboard />
@@ -64,7 +61,7 @@ export default function HomePage() {
           <div className="section-inner">
             <p className="eyebrow">Home base</p>
             <h2>The self-hosted corner</h2>
-            <p className="lede">Apps running on the Cortaku homelab. They need a login, so these are mostly for me.</p>
+            <p className="lede">Private services running on the Cortaku homelab. Login required—mostly for personal use.</p>
             <AppLauncher />
           </div>
         </section>
@@ -72,7 +69,7 @@ export default function HomePage() {
         <section id="elsewhere" className="section">
           <div className="section-inner">
             <p className="eyebrow">Elsewhere</p>
-            <h2>Find me around the internet</h2>
+            <h2>Find me around the web</h2>
             <ul className="socials">
               {SOCIALS.map((social) => {
                 if (social.id === 'email') return <li key={social.id}><EmailCard /></li>;

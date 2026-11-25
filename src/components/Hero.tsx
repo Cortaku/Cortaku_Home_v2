@@ -6,6 +6,8 @@ import { useArcade } from './ArcadeProvider';
 import Petals from './Petals';
 import Mascot from './Mascot';
 import { SCENE_COUNT, TAGLINE } from '@/lib/site';
+import { loadImage } from '@/game/assets';
+import { roadPalette, sampleGround } from '@/game/road';
 
 // Layer 1 is the still sky; 2-5 scroll at increasing speed.
 const LAYERS = [
@@ -56,6 +58,23 @@ export default function Hero() {
     };
   }, []);
 
+  // Colour the road from the scene's ground, for both day and night.
+  useEffect(() => {
+    const el = sceneRef.current;
+    let cancelled = false;
+    for (const time of ['day', 'night'] as const) {
+      loadImage(`/game-assets/Backgrounds/${scene}/${time}/5.png`)
+        .then((layer) => {
+          if (cancelled || !el) return;
+          for (const [name, colour] of Object.entries(roadPalette(sampleGround(layer)))) {
+            el.style.setProperty(`--road-${name}-${time}`, colour);
+          }
+        })
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [scene]);
+
   const top = scores[0];
 
   return (
@@ -83,7 +102,7 @@ export default function Hero() {
             <Play className="size-5 fill-current" aria-hidden="true" />
             Play
           </button>
-          <a href="#scores" className="chip">
+          <a href="#arcade" className="chip">
             <Trophy className="size-4" aria-hidden="true" />
             {scoreState === 'ready' && top ? (
               <span>

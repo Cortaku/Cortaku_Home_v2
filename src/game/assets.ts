@@ -1,7 +1,8 @@
 import { OBSTACLE_SIZES, type ObstacleKind } from './sim';
+import { roadPalette, sampleGround, type RoadPalette } from './road';
 
 export type DayTime = 'day' | 'night';
-export type Scene = { key: string; layers: HTMLImageElement[] };
+export type Scene = { key: string; layers: HTMLImageElement[]; road: RoadPalette };
 
 /** Scroll speed of each layer relative to the ground. Layer 0 is the still sky. */
 export const LAYER_SPEEDS = [0, 0.05, 0.15, 0.3, 0.5];
@@ -30,7 +31,7 @@ export async function loadScene(set: number, time: DayTime): Promise<Scene> {
   const layers = await Promise.all(
     LAYER_SPEEDS.map((_, i) => loadImage(`/game-assets/Backgrounds/${set}/${time}/${i + 1}.png`)),
   );
-  return { key: `${set}/${time}`, layers };
+  return { key: `${set}/${time}`, layers, road: roadPalette(sampleGround(layers[layers.length - 1])) };
 }
 
 /** Transparent margin around each obstacle sprite for its glow, in game px. */

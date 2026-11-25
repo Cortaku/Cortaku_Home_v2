@@ -42,7 +42,6 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
   const [today] = useState(todayKey);
   const [phase, setPhase] = useState<Phase>('idle');
   const [mode, setMode] = useState<Mode>('endless');
-  const [zone, setZone] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
   const [modal, setModal] = useState<'name' | 'board' | null>(null);
   const [name, setName] = useState('');
@@ -75,8 +74,12 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
   });
 
   const handleSound = useEffectEvent((sound: 'jump' | 'death' | 'zone') => {
-    if (sound === 'zone') audioRef.current?.chime();
-    else audioRef.current?.play(sound);
+    const audio = audioRef.current;
+    if (sound === 'zone') audio?.chime();
+    else if (sound === 'death') {
+      audio?.bonk();
+      audio?.play('death');
+    } else audio?.play(sound);
   });
 
   useEffect(() => {
@@ -88,7 +91,6 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
       {
         onPhase: (next) => handlePhase(next),
         onScore: (score) => handleScore(score),
-        onZone: (next) => setZone(next),
         onSound: (sound) => handleSound(sound),
       },
       { baseSet: backgroundSet, baseTime: gameTheme, debug: window.location.search.includes('hitbox') },
@@ -132,7 +134,6 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
     audio.setMusic(true);
     setMode(nextMode);
     setResult(null);
-    setZone(0);
     setModal(null);
     engine.start(nextMode === 'daily' ? hashSeed(`cortaku-daily-${today}`) : (Math.random() * 2 ** 32) >>> 0);
   };
@@ -262,9 +263,6 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
             </div>
           </div>
 
-          {phase === 'running' && zone > 0 && (
-            <div key={zone} className="game-toast" aria-live="polite">Zone {zone + 1}</div>
-          )}
 
           {showMenu && (
             <div className="game-panel">

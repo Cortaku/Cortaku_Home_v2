@@ -24,10 +24,10 @@ export default function EmailCard() {
     status === 'copied' ? 'Address copied. Opening your mail app…' : status === 'opening' ? 'Opening your mail app…' : EMAIL;
 
   return (
-    <a href={EMAIL_LINK} className="social" onClick={copy}>
+    <a href={EMAIL_LINK} className="social social-mail" onClick={copy}>
       <Mail className="size-5" aria-hidden="true" />
       <span className="social-title">Email</span>
-      <span className="social-handle" aria-live="polite">
+      <span className={status === 'idle' ? 'social-handle social-email' : 'social-handle'} aria-live="polite">
         {message}
       </span>
       {status !== 'idle' ? (

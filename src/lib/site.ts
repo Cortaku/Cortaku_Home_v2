@@ -4,7 +4,7 @@ export const SITE_URL = 'https://www.cortaku.com';
 export const SUPABASE_URL = 'https://giqylsntwontlxqrppto.supabase.co';
 export const SUPABASE_KEY = 'sb_publishable_gbvl5dHFQFgboRczPUcSPg_U25_ZHgc';
 
-export const TAGLINE = 'Petals, pixels and a high score to beat.';
+export const TAGLINE = 'Sakura, sprites, and sights.';
 
 export type AppLink = {
   id: string;

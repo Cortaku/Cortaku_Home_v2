@@ -111,7 +111,7 @@ export default function ArcadeProvider({ children }: { children: React.ReactNode
         party();
         return;
       }
-      if (e.code === 'Space' && !e.repeat && !isTyping(e.target) && window.scrollY < 80 && !document.querySelector('dialog[open]')) {
+      if (e.code === 'Space' && !e.repeat && !isTyping(e.target) && window.scrollY < 80) {
         e.preventDefault();
         openGame();
       }
