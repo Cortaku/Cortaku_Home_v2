@@ -19,7 +19,7 @@ A header carries section links, a quick search (Ctrl/Cmd+K) and a day/night togg
 
 | Layer | Choice |
 | --- | --- |
-| Framework | Next.js 16, App Router, standalone output |
+| Framework | Next.js 16, App Router, static export |
 | UI | React 19 with the React Compiler enabled |
 | Language | TypeScript 6 |
 | Styling | Tailwind CSS v4 for utilities; component styles in plain CSS (`src/app/globals.css`) |
@@ -29,7 +29,7 @@ A header carries section links, a quick search (Ctrl/Cmd+K) and a day/night togg
 | Game | Canvas 2D and Web Audio; no game library |
 | Leaderboard | Supabase (Postgres with row-level security), called from the browser over REST |
 | Tests | Vitest |
-| Hosting | Docker (Node 22 Alpine, multi-stage) |
+| Hosting | Cloudflare Workers: static assets plus a small Worker |
 
 There is no `.env` file and no server-side secret. The only runtime dependencies are `next`, `react`, `react-dom`, `next-themes`, `lucide-react` and Tailwind.
 
@@ -37,7 +37,7 @@ There is no `.env` file and no server-side secret. The only runtime dependencies
 
 ### 3.1 Rendering
 
-`src/app/page.tsx` is a server component and the page is prerendered as static HTML. Interactive parts are client components mounted into it. The one server route is `/api/status`.
+`next build` exports the whole site as static files (`output: 'export'`). `src/app/page.tsx` is prerendered to HTML and the interactive parts are client components mounted into it. There is no Next.js server in production; the one dynamic endpoint, `/api/status`, is served by the Cloudflare Worker in `worker/index.ts`.
 
 ### 3.2 Layout of the source
 
@@ -50,7 +50,6 @@ src/
     globals.css           design tokens and all component styles
     icon.svg              favicon (the robot)
     opengraph-image.tsx   share card, generated at build time
-    api/status/route.ts   up/down check for the app launcher
   components/
     ArcadeProvider.tsx    game open/close, scene, scores, easter eggs
     Hero.tsx              parallax scene, title, Play button
@@ -75,7 +74,8 @@ src/
   lib/
     site.ts               all site content and configuration
     scores.ts             leaderboard client
-  instrumentation.ts      leaderboard keep-alive (see 5.4)
+worker/index.ts           Cloudflare Worker: /api/status and the leaderboard keep-alive
+wrangler.jsonc            Cloudflare deployment config
 supabase/migrations/      leaderboard schema and access rules
 tools/scenes/tokyo.lua    Aseprite script that draws the scenes
 public/game-assets/       scene layers, robot sprite sheet, sounds
@@ -200,7 +200,7 @@ Scores are submitted by the client and are not verified against a replay, so the
 
 ### 5.4 Keep-alive
 
-Supabase pauses free-plan projects that see little activity for about a week. `src/instrumentation.ts` reads the leaderboard when the server starts and every 12 hours after, which keeps the project active while the site is running.
+Supabase pauses free-plan projects that see little activity for about a week. The Worker has a cron trigger that reads the leaderboard every 12 hours, which keeps the project active.
 
 ### 5.5 Other tables
 
@@ -212,7 +212,7 @@ The same Supabase project holds an unrelated Mealie database. The second migrati
 - **Petals.** One canvas of pixel petals that drift on a breeze following the pointer; a click or tap throws a burst. It stops when off-screen or while the game is open.
 - **Mascot.** The robot runs in place, hops when clicked, and speaks up after seven seconds of inactivity.
 - **Game launch.** Opening and closing the game uses the View Transitions API to morph between the hero scene and the game. The game code is loaded on demand.
-- **App launcher.** `/api/status` sends a `HEAD` request to each app with a 4 s timeout and caches the result for 60 s. Any response below 500 counts as up, since a login redirect still means the app is running.
+- **App launcher.** The Worker's `/api/status` sends a `HEAD` request to each app with a 4 s timeout and caches the result at the edge for 60 s. Any response below 500 counts as up, since a login redirect still means the app is running.
 - **Quick search.** Ctrl/Cmd+K opens a `<dialog>` listing the game, every app and link, the theme toggle and the scene switch, with arrow-key navigation.
 - **Email.** The email card opens a pre-addressed message and also copies the address, because a `mailto:` link does nothing on a machine with no mail app.
 - **Share card.** `opengraph-image.tsx` generates the social preview image at build time.
@@ -236,20 +236,25 @@ The site is served at http://localhost:3000. No configuration is needed.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Development server |
-| `npm run build` | Production build |
-| `npm start` | Serve the production build |
+| `npm run dev` | Next.js development server |
+| `npm run build` | Static export to `./out` |
+| `npm run preview` | Build, then serve through the Worker locally (`wrangler dev`) |
+| `npm run deploy` | Build, then `wrangler deploy` |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |
 
-### Docker
+`npm run dev` does not run the Worker, so the app status dots stay in their "checking" state there. Use `npm run preview` to exercise `/api/status`.
 
-```bash
-docker build -t cortaku-site .
-docker-compose up -d
-```
+### Hosting
 
-The image is a two-stage Node 22 Alpine build that runs Next's standalone server on port 3000. `docker-compose.yml` attaches the container to an existing external network named `containers_cortaku`.
+The site runs on Cloudflare Workers as `cortaku-home`, configured in `wrangler.jsonc`:
+
+- The static export in `./out` is served as Worker assets. Requests for files never run Worker code.
+- Only `/api/*` reaches the Worker (`worker/index.ts`).
+- A cron trigger runs the leaderboard keep-alive every 12 hours.
+- `www.cortaku.com` and `cortaku.com` are attached as custom domains.
+
+Pushing to `main` on GitHub deploys automatically through Cloudflare Workers Builds, which runs `npm run build` and then `npx wrangler deploy`.
 
 ### Pointing at a different Supabase project
 

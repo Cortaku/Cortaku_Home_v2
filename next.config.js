@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
+  // A fully static site; Cloudflare serves the ./out folder.
+  output: 'export',
   reactCompiler: true,
 };
 

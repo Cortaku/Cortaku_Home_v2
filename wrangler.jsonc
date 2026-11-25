@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cortaku-home",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  // `next build` writes the static site to ./out; only /api/* reaches the Worker code.
+  "assets": {
+    "directory": "./out",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
+  },
+  // Leaderboard keep-alive, every 12 hours.
+  "triggers": { "crons": ["0 */12 * * *"] },
+  "observability": { "enabled": true }
+}
