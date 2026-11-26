@@ -14,9 +14,11 @@ export type Profile = {
   muted: boolean;
   /** Last leaderboard name, offered again next time. */
   name: string;
+  /** Secret skins found on the site. */
+  secrets: string[];
 };
 
-const DEFAULTS: Profile = { best: 0, bestEver: 0, dailyDate: '', dailyBest: 0, skin: 'classic', muted: false, name: '' };
+const DEFAULTS: Profile = { best: 0, bestEver: 0, dailyDate: '', dailyBest: 0, skin: 'classic', muted: false, name: '', secrets: [] };
 
 const KEY = 'cortaku.profile';
 /** Where the original game stored its high score. */
@@ -60,6 +62,14 @@ export function updateProfile(patch: Partial<Profile>) {
     // Storage blocked: the change lasts for this visit only.
   }
   listeners.forEach((listener) => listener());
+}
+
+/** Unlocks a secret skin. False if it was already found. */
+export function unlockSecret(id: string): boolean {
+  const { secrets } = read();
+  if (secrets.includes(id)) return false;
+  updateProfile({ secrets: [...secrets, id] });
+  return true;
 }
 
 /** 0 if the stored daily best is from another day. */

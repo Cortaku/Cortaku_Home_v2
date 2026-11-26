@@ -1,5 +1,5 @@
-// The leaderboard is a Supabase table the browser calls directly.
-// Its rules are enforced by the database: see supabase/migrations.
+// The leaderboard is a Supabase table. The browser reads it directly; scores are posted through the
+// Worker, which replays each run before saving it (worker/index.ts, supabase/migrations).
 import { SUPABASE_KEY, SUPABASE_URL } from './site';
 
 export type Score = { id: number; player_name: string; score: number };
@@ -25,18 +25,37 @@ export async function fetchScores(daily?: string): Promise<Score[] | null> {
   }
 }
 
-export type SubmitResult = 'saved' | 'rate-limited' | 'failed';
+/** A signed ticket for one run: the endless seed, and proof of when the run could have started. */
+export type RunTicket = { token: string; seed: number };
 
-export async function submitScore(playerName: string, score: number, daily?: string): Promise<SubmitResult> {
+export async function requestRun(): Promise<RunTicket | null> {
   try {
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch('/api/run', { method: 'POST' });
+    if (!res.ok) return null;
+    const data = (await res.json()) as Partial<RunTicket>;
+    return typeof data.token === 'string' && typeof data.seed === 'number' ? { token: data.token, seed: data.seed } : null;
+  } catch {
+    return null;
+  }
+}
+
+export type SubmitResult = 'saved' | 'rate-limited' | 'duplicate' | 'expired' | 'invalid' | 'failed';
+
+export async function submitScore(
+  run: { ticket: RunTicket; inputs: number[] },
+  playerName: string,
+  score: number,
+  daily?: string,
+): Promise<SubmitResult> {
+  try {
+    const res = await fetch('/api/score', {
       method: 'POST',
-      headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ player_name: playerName, score, challenge_date: daily ?? null }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: run.ticket.token, inputs: run.inputs, name: playerName, score, date: daily ?? null }),
     });
     if (res.ok) return 'saved';
-    const error = (await res.json().catch(() => null)) as { message?: string } | null;
-    return error?.message?.startsWith('Rate limit') ? 'rate-limited' : 'failed';
+    const { error } = ((await res.json().catch(() => ({}))) as { error?: string });
+    return error === 'rate-limited' || error === 'duplicate' || error === 'expired' || error === 'invalid' ? error : 'failed';
   } catch {
     return 'failed';
   }

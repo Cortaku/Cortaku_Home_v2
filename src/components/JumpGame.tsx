@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { CalendarDays, Pause, Play, RotateCcw, RotateCw, Trophy, Volume2, VolumeX, X } from 'lucide-react';
+import { CalendarDays, Pause, Play, RotateCcw, RotateCw, Share2, Trophy, Volume2, VolumeX, X } from 'lucide-react';
 import { Engine, type Phase } from '@/game/engine';
 import { GameAudio } from '@/game/audio';
-import { VIEW_H, VIEW_W, hashSeed } from '@/game/sim';
+import { VIEW_H, VIEW_W } from '@/game/sim';
+import { dailySeed } from '@/game/replay';
+import { shareRun } from '@/game/share';
 import { SKINS, loadSkinSheet } from '@/game/skins';
 import { dailyBestToday, getProfile, recordRun, todayKey, updateProfile, useProfile } from '@/game/profile';
-import { submitScore } from '@/lib/scores';
+import { requestRun, submitScore, type RunTicket, type SubmitResult } from '@/lib/scores';
 import ScoreBoard from './ScoreBoard';
 import SkinPicker from './SkinPicker';
 
@@ -20,7 +22,22 @@ type Props = {
   backgroundSet?: number;
 };
 
-type Result = { score: number; isBest: boolean; unlocked: string[] };
+type Result = {
+  score: number;
+  zone: number;
+  isBest: boolean;
+  unlocked: string[];
+  /** What the Worker needs to verify the run; null if it started without a ticket (offline). */
+  run: { ticket: RunTicket; inputs: number[] } | null;
+};
+
+const SAVE_ERRORS: Record<Exclude<SubmitResult, 'saved'>, string> = {
+  'rate-limited': 'Too many scores at once. Try again in a minute.',
+  duplicate: 'This run is already on the leaderboard.',
+  expired: 'This run is too old to post now.',
+  invalid: 'This run could not be verified, so it was not posted.',
+  failed: 'Could not reach the leaderboard. Try again.',
+};
 
 /** Presses just after dying are ignored, so mashing jump doesn't skip the result. */
 const RETRY_LOCK_MS = 500;
@@ -38,6 +55,9 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
   const engineRef = useRef<Engine | null>(null);
   const audioRef = useRef<GameAudio | null>(null);
   const overAtRef = useRef(0);
+  /** A ticket fetched ahead of time, so starting a run never waits on the network. */
+  const nextTicketRef = useRef<RunTicket | null>(null);
+  const runTicketRef = useRef<RunTicket | null>(null);
 
   const [today] = useState(todayKey);
   const [phase, setPhase] = useState<Phase>('idle');
@@ -47,6 +67,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [shared, setShared] = useState(false);
 
   const best = mode === 'daily' ? dailyBestToday(profile) : profile.best;
 
@@ -55,13 +76,22 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
     if (next === 'paused') audioRef.current?.setMusic(false);
     if (next !== 'over') return;
 
-    const score = engineRef.current?.score ?? 0;
+    const engine = engineRef.current;
+    const score = engine?.score ?? 0;
     const before = getProfile().bestEver;
     const isBest = recordRun(mode, score);
     const unlocked = SKINS.filter((s) => s.unlockAt > before && s.unlockAt <= score).map((s) => s.name);
+    const ticket = runTicketRef.current;
     overAtRef.current = performance.now();
     audioRef.current?.setMusic(false);
-    setResult({ score, isBest, unlocked });
+    setShared(false);
+    setResult({
+      score,
+      zone: engine?.sim.zone ?? 0,
+      isBest,
+      unlocked,
+      run: ticket && engine ? { ticket, inputs: engine.recording } : null,
+    });
     if (isBest && score > 0) {
       setName(getProfile().name);
       setSaveError('');
@@ -118,6 +148,12 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
     return () => { cancelled = true; };
   }, [profile.skin, backgroundSet, gameTheme]);
 
+  const fetchTicket = () => {
+    requestRun().then((ticket) => { nextTicketRef.current = ticket; });
+  };
+
+  useEffect(fetchTicket, []);
+
   // Stop the page behind from scrolling.
   useEffect(() => {
     const { documentElement: html, body } = document;
@@ -135,7 +171,13 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
     setMode(nextMode);
     setResult(null);
     setModal(null);
-    engine.start(nextMode === 'daily' ? hashSeed(`cortaku-daily-${today}`) : (Math.random() * 2 ** 32) >>> 0);
+    const ticket = nextTicketRef.current;
+    runTicketRef.current = ticket;
+    nextTicketRef.current = null;
+    fetchTicket();
+    // Without a ticket (offline) the run still plays, it just can't be posted.
+    const endlessSeed = ticket?.seed ?? (Math.random() * 2 ** 32) >>> 0;
+    engine.start(nextMode === 'daily' ? dailySeed(today) : endlessSeed);
   };
 
   const resume = () => {
@@ -173,16 +215,26 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
   const saveScore = async () => {
     const trimmed = name.trim();
     if (!trimmed || !result || saving) return;
-    setSaving(true);
     updateProfile({ name: trimmed });
-    const outcome = await submitScore(trimmed, result.score, mode === 'daily' ? today : undefined);
+    if (!result.run) {
+      setSaveError('This run started offline, so it can’t be posted.');
+      return;
+    }
+    setSaving(true);
+    const outcome = await submitScore(result.run, trimmed, result.score, mode === 'daily' ? today : undefined);
     setSaving(false);
     if (outcome === 'saved') {
       setSaveError('');
       setModal('board');
     } else {
-      setSaveError(outcome === 'rate-limited' ? 'Too many scores at once. Try again in a minute.' : 'Could not reach the leaderboard. Try again.');
+      setSaveError(SAVE_ERRORS[outcome]);
     }
+  };
+
+  const share = async () => {
+    if (!result) return;
+    const how = await shareRun({ mode, date: today, score: result.score, zone: result.zone });
+    if (how === 'copied') setShared(true);
   };
 
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
@@ -316,9 +368,14 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
                 </button>
                 <button type="button" className="btn-arcade btn-arcade-alt" onClick={backToMenu}>Menu</button>
               </div>
-              <button type="button" className="game-link" onClick={() => setModal('board')}>
-                <Trophy aria-hidden="true" /> Leaderboard
-              </button>
+              <div className="game-links">
+                <button type="button" className="game-link" onClick={() => setModal('board')}>
+                  <Trophy aria-hidden="true" /> Leaderboard
+                </button>
+                <button type="button" className="game-link" onClick={share}>
+                  <Share2 aria-hidden="true" /> {shared ? 'Copied!' : 'Share'}
+                </button>
+              </div>
             </div>
           )}
         </div>

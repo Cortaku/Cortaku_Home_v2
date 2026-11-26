@@ -125,12 +125,25 @@ end
 -- ---------- Land ----------
 
 -- Rolling hills. k1 and k2 are whole numbers of waves across the image, which keeps the edges matching.
+-- Returns the surface, a function giving the top row of the hill at any x, so things can stand on it.
 local function hills(img, base, amp, c, phase, k1, k2)
+  local function surface(x)
+    local a = 2 * math.pi * (math.floor(x) % W) / W
+    return math.floor(base - amp * (0.6 * math.sin(k1 * a + phase) + 0.4 * math.sin(k2 * a + phase * 1.7)))
+  end
   for x = 0, W - 1 do
-    local a = 2 * math.pi * x / W
-    local y = math.floor(base - amp * (0.6 * math.sin(k1 * a + phase) + 0.4 * math.sin(k2 * a + phase * 1.7)))
+    local y = surface(x)
     rect(img, x, y, 1, H - y, c)
   end
+  return surface
+end
+
+-- The base for something standing on `surface` between x0 and x1: one row into the lowest point under it,
+-- so no part hangs over a dip. Objects fill the rows above their base.
+local function footing(surface, x0, x1)
+  local low = surface(x0)
+  for x = math.floor(x0) + 1, math.floor(x1) do low = math.max(low, surface(x)) end
+  return low + 1
 end
 
 local function fuji(img, cx, peak, base, halfWidth, c, snow)
@@ -364,28 +377,33 @@ local function sceneFuji(time)
 
   srand(903)
   out[3] = layer()
-  hills(out[3], 228, 9, hex(p[4]), 2.1, 3, 7)
-  pagoda(out[3], 438, 224, 5, hex(p[4]))
-  for _, x in ipairs({ 40, 62, 92, 300, 330, 520, 548 }) do pine(out[3], x, 226, ri(16, 24), hex(p[4])) end
+  local land3 = hills(out[3], 228, 9, hex(p[4]), 2.1, 3, 7)
+  pagoda(out[3], 438, footing(land3, 423, 453), 5, hex(p[4]))
+  for _, x in ipairs({ 40, 62, 92, 300, 330, 520, 548 }) do pine(out[3], x, footing(land3, x, x + 1), ri(16, 24), hex(p[4])) end
 
   srand(904)
   out[4] = layer()
-  hills(out[4], 244, 5, hex(p[5]), 4.0, 2, 6)
-  torii(out[4], 120, 246, 1.7, night and hex('#7a2238') or hex('#d8455a'))
-  pagoda(out[4], 318, 246, 3, hex(p[5]))
-  for _, x in ipairs({ 20, 190, 214, 400, 470, 496, 560 }) do pine(out[4], x, 246, ri(22, 34), hex(p[5])) end
-  rect(out[4], 318 - 4, 246 - 6, 3, 3, lit)
+  local land4 = hills(out[4], 244, 5, hex(p[5]), 4.0, 2, 6)
+  torii(out[4], 120, footing(land4, 103, 137), 1.7, night and hex('#7a2238') or hex('#d8455a'))
+  local pagodaBase = footing(land4, 308, 328)
+  pagoda(out[4], 318, pagodaBase, 3, hex(p[5]))
+  for _, x in ipairs({ 20, 190, 214, 400, 470, 496, 560 }) do pine(out[4], x, footing(land4, x, x + 1), ri(22, 34), hex(p[5])) end
+  rect(out[4], 318 - 4, pagodaBase - 6, 3, 3, lit)
 
   srand(905)
   out[5] = layer()
   ground(out[5], 272, hex(p[6]))
-  hills(out[5], 270, 3, hex(p[6]), 1.0, 4, 9)
+  local hill5 = hills(out[5], 270, 3, hex(p[6]), 1.0, 4, 9)
+  local function land5(x) return math.min(hill5(x), 272) end
   local leaf = night and hex('#8a4a78') or hex('#ff9fc0')
   local light = night and hex('#b0669a') or hex('#ffd3e2')
-  for _, x in ipairs({ 36, 150, 262, 372, 486 }) do blossomTree(out[5], x + ri(-8, 8), 270, 2, hex(p[6]), leaf, light) end
-  for _, x in ipairs({ 96, 318, 432 }) do stoneLantern(out[5], x, 270, hex(p[6]), lit) end
+  for _, x in ipairs({ 36, 150, 262, 372, 486 }) do
+    local tx = x + ri(-8, 8)
+    blossomTree(out[5], tx, footing(land5, tx - 1, tx + 3), 2, hex(p[6]), leaf, light)
+  end
+  for _, x in ipairs({ 96, 318, 432 }) do stoneLantern(out[5], x, footing(land5, x - 2, x + 2), hex(p[6]), lit) end
   rect(out[5], 0, 262, W, 1, hex(p[6]))
-  for x = 6, W - 1, 12 do rect(out[5], x, 259, 2, 11, hex(p[6])) end
+  for x = 6, W - 1, 12 do rect(out[5], x, 259, 2, footing(land5, x, x + 1) - 259, hex(p[6])) end
   return out
 end
 
@@ -608,9 +626,9 @@ local function sceneBamboo(time)
   srand(1204)
   out[4] = layer()
   canopy(out[4], 22, 8, hex(p[5]), 4.1, 2, 6)
-  hills(out[4], 246, 4, hex(p[5]), 0.5, 2, 6)
-  teaHouse(out[4], 300, 246, hex(p[5]), mix(p[5], p[6], 0.6), lit)
-  torii(out[4], 124, 246, 1.5, night and hex('#7a2238') or hex('#d8455a'))
+  local land = hills(out[4], 246, 4, hex(p[5]), 0.5, 2, 6)
+  teaHouse(out[4], 300, footing(land, 300, 339), hex(p[5]), mix(p[5], p[6], 0.6), lit)
+  torii(out[4], 124, footing(land, 109, 139), 1.5, night and hex('#7a2238') or hex('#d8455a'))
   grove(out[4], 250, 58, 14, 5, 2, 28, hex(p[5]), joint(5), hex(p[5]))
   if night then
     -- Fireflies. Drawn last so the extra random numbers cannot shift anything else in the layer.

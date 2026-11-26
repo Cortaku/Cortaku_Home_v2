@@ -28,16 +28,21 @@ export default function SkinPicker() {
   return (
     <ul className="skins" data-ui aria-label="Robot skins">
       {SKINS.map((skin) => {
-        const unlocked = isUnlocked(skin, profile.bestEver);
+        const unlocked = isUnlocked(skin, profile);
         const selected = profile.skin === skin.id;
+        const hidden = skin.secret && !unlocked;
+        const title = unlocked
+          ? skin.name
+          : hidden ? 'A secret skin. Something on this page might be worth catching…' : `${skin.name}: score ${skin.unlockAt} to unlock`;
         return (
           <li key={skin.id}>
             <button
               type="button"
-              className="skin"
+              className={`skin${hidden ? ' is-secret' : ''}`}
               aria-pressed={selected}
               disabled={!unlocked}
-              title={unlocked ? skin.name : `${skin.name}: score ${skin.unlockAt} to unlock`}
+              title={title}
+              aria-label={title}
               onClick={() => updateProfile({ skin: skin.id })}
             >
               <span className="skin-art" style={urls[skin.id] ? { backgroundImage: `url(${urls[skin.id]})` } : undefined} />
@@ -45,7 +50,7 @@ export default function SkinPicker() {
                 {unlocked ? skin.name : (
                   <>
                     <Lock className="skin-lock" aria-hidden="true" />
-                    {skin.unlockAt}
+                    {hidden ? '???' : skin.unlockAt}
                   </>
                 )}
               </span>

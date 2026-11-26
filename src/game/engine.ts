@@ -5,6 +5,7 @@ import {
 } from './sim';
 import { LAYER_SPEEDS, OBSTACLE_PAD, buildObstacleSprites, loadScene, type DayTime, type Scene } from './assets';
 import { DEFAULT_ROAD, drawRoad } from './road';
+import { encodeInput } from './replay';
 import { SPRITE_COLUMNS, SPRITE_FRAMES, SPRITE_ROWS, type SkinSheet } from './skins';
 import { SCENE_COUNT } from '@/lib/site';
 
@@ -50,6 +51,9 @@ export class Engine {
   private lastScore = -1;
   /** Bumped on every start so scene loads from an old run are ignored. */
   private runId = 0;
+  /** Steps taken this run, and every press and release by step, for the server to replay. */
+  private ticks = 0;
+  private inputs: number[] = [];
 
   // Background scroll carries across restarts so the world never jumps.
   private bgBase = 0;
@@ -100,11 +104,18 @@ export class Engine {
     return Math.floor(this.sim.score);
   }
 
+  /** This run's inputs (see replay.ts). */
+  get recording(): number[] {
+    return this.inputs.slice();
+  }
+
   start(seed: number) {
     this.bgBase += this.phase === 'idle' ? this.idleDist : this.sim.dist;
     this.idleDist = 0;
     this.sim.reset(seed);
     this.runId += 1;
+    this.ticks = 0;
+    this.inputs = [];
     this.acc = 0;
     this.lastScore = -1;
     this.stretch = 0;
@@ -141,10 +152,14 @@ export class Engine {
   }
 
   press() {
-    if (this.phase === 'running') this.sim.press();
+    if (this.phase !== 'running') return;
+    this.inputs.push(encodeInput(this.ticks, true));
+    this.sim.press();
   }
 
   release() {
+    // A release while paused still changes the next step, so it is recorded too.
+    if (this.phase === 'running' || this.phase === 'paused') this.inputs.push(encodeInput(this.ticks, false));
     this.sim.release();
   }
 
@@ -196,6 +211,7 @@ export class Engine {
       this.acc += dt;
       while (this.acc >= STEP && this.sim.alive) {
         this.sim.step(STEP);
+        this.ticks += 1;
         this.acc -= STEP;
         this.handleEvents();
       }

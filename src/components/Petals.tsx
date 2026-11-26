@@ -9,15 +9,58 @@ type Petal = {
   life: number;
 };
 
-const COLORS = ['#ffc2d6', '#ff9fc0', '#ffe0ea', '#ffffff', '#f7b4d0'];
+type Range = [number, number];
 
-// The two shapes a petal flips between.
-const SHAPES: [number, number][][] = [
-  [[0, 0], [1, 0], [1, 1], [2, 1]],
-  [[1, 0], [0, 1], [1, 1]],
-];
+/** How one season's particles look and move. Shapes are pixel offsets; a particle flips between the two. */
+type Season = {
+  colors: string[];
+  shapes: [[number, number][], [number, number][]];
+  unit: Range;
+  vx: Range;
+  vy: Range;
+  /** Side-to-side sway, px/s. */
+  sway: number;
+  /** Fireflies wander and glow instead of falling. */
+  glow?: boolean;
+};
 
-/** Pixel petals on a breeze that follows the pointer; a click throws a burst. */
+const SEASONS: Record<'spring' | 'summer' | 'autumn' | 'winter', Season> = {
+  spring: {
+    colors: ['#ffc2d6', '#ff9fc0', '#ffe0ea', '#ffffff', '#f7b4d0'],
+    shapes: [[[0, 0], [1, 0], [1, 1], [2, 1]], [[1, 0], [0, 1], [1, 1]]],
+    unit: [2, 4], vx: [10, 30], vy: [26, 60], sway: 18,
+  },
+  summer: {
+    colors: ['#eaff8a', '#fff39a', '#d8ff6a'],
+    shapes: [[[0, 0]], [[0, 0]]],
+    unit: [2, 3], vx: [-14, 14], vy: [-10, 10], sway: 12, glow: true,
+  },
+  autumn: {
+    colors: ['#d8455a', '#e8553f', '#f08a3c', '#f2b33d', '#b83a2e'],
+    shapes: [[[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]], [[0, 0], [2, 0], [0, 1], [1, 1], [2, 1], [1, 2]]],
+    unit: [2, 3], vx: [10, 40], vy: [34, 70], sway: 34,
+  },
+  winter: {
+    colors: ['#ffffff', '#eef3ff', '#dfe8ff'],
+    shapes: [[[0, 0]], [[0, 0]]],
+    unit: [2, 4], vx: [-6, 12], vy: [18, 40], sway: 10,
+  },
+};
+
+/** Northern-hemisphere seasons by the visitor's month; `?season=autumn` (etc.) overrides it. */
+function currentSeason(): Season {
+  const asked = new URLSearchParams(window.location.search).get('season');
+  if (asked && asked in SEASONS) return SEASONS[asked as keyof typeof SEASONS];
+  const month = new Date().getMonth();
+  if (month >= 2 && month <= 4) return SEASONS.spring;
+  if (month >= 5 && month <= 7) return SEASONS.summer;
+  if (month >= 8 && month <= 10) return SEASONS.autumn;
+  return SEASONS.winter;
+}
+
+const between = ([a, b]: Range) => a + Math.random() * (b - a);
+
+/** The season's particles (sakura, fireflies, maple leaves or snow) on a breeze that follows the pointer; a click throws a burst. */
 export default function Petals({ paused }: { paused: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pausedRef = useRef(paused);
@@ -31,6 +74,7 @@ export default function Petals({ paused }: { paused: boolean }) {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const season = currentSeason();
 
     let w = 0;
     let h = 0;
@@ -43,13 +87,13 @@ export default function Petals({ paused }: { paused: boolean }) {
 
     const spawn = (anywhere: boolean): Petal => ({
       x: Math.random() * w,
-      y: anywhere ? Math.random() * h : -12,
-      vx: 10 + Math.random() * 20,
-      vy: 26 + Math.random() * 34,
-      unit: 2 + Math.floor(Math.random() * 3),
+      y: anywhere || season.glow ? Math.random() * h : -12,
+      vx: between(season.vx),
+      vy: between(season.vy),
+      unit: Math.round(between(season.unit)),
       phase: Math.random() * Math.PI * 2,
       flutter: 2 + Math.random() * 3,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      color: season.colors[Math.floor(Math.random() * season.colors.length)],
       life: -1,
     });
 
@@ -90,27 +134,32 @@ export default function Petals({ paused }: { paused: boolean }) {
           p.y += (dy / dist) * push;
         }
 
-        p.x += (p.vx + wind + Math.sin(p.phase) * 18) * dt;
+        p.x += (p.vx + wind + Math.sin(p.phase) * season.sway) * dt;
         p.y += p.vy * dt;
 
         if (p.life >= 0) {
           p.vy += 220 * dt;
           p.life -= dt;
           if (p.life <= 0) { petals.splice(i, 1); continue; }
-        } else if (p.y > h + 12 || p.x > w + 24 || p.x < -24) {
+        } else if (p.y > h + 12 || p.y < -24 || p.x > w + 24 || p.x < -24) {
           petals[i] = spawn(false);
           if (p.x > w + 24) petals[i].x = -12;
           continue;
         }
 
-        ctx.globalAlpha = p.life >= 0 ? Math.min(1, p.life * 2) : 0.9;
+        // Fireflies pulse; everything else is steady.
+        const base = season.glow ? 0.35 + 0.65 * Math.max(0, Math.sin(p.phase * 0.7)) : 0.9;
+        ctx.globalAlpha = p.life >= 0 ? Math.min(1, p.life * 2) : base;
         ctx.fillStyle = p.color;
-        const shape = SHAPES[Math.sin(p.phase) > 0 ? 0 : 1];
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = season.glow ? 8 : 0;
+        const shape = season.shapes[Math.sin(p.phase) > 0 ? 0 : 1];
         const px = Math.round(p.x);
         const py = Math.round(p.y);
         for (const [cx, cy] of shape) ctx.fillRect(px + cx * p.unit, py + cy * p.unit, p.unit, p.unit);
       }
       ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
     };
 
     const onMove = (e: PointerEvent) => {

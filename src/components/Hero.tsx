@@ -5,6 +5,7 @@ import { Play, Shuffle, Trophy } from 'lucide-react';
 import { useArcade } from './ArcadeProvider';
 import Petals from './Petals';
 import Mascot from './Mascot';
+import FallenLantern from './FallenLantern';
 import { SCENE_COUNT, TAGLINE } from '@/lib/site';
 import { loadImage } from '@/game/assets';
 import { roadPalette, sampleGround } from '@/game/road';
@@ -37,7 +38,7 @@ function SceneStack({ scene, time }: { scene: number; time: 'day' | 'night' }) {
 }
 
 export default function Hero() {
-  const { isOpen, openGame, scores, scoreState, scene, nextScene } = useArcade();
+  const { isOpen, openGame, scores, scoreState, scene, nextScene, fallenLantern } = useArcade();
   const sceneRef = useRef<HTMLDivElement>(null);
 
   // Lean the layers toward the pointer.
@@ -92,6 +93,7 @@ export default function Hero() {
 
       <Petals paused={isOpen} />
       <Mascot paused={isOpen} />
+      {fallenLantern && <FallenLantern from={fallenLantern} />}
 
       <div className="hero-copy">
         <h1 className="wordmark">Cortaku</h1>

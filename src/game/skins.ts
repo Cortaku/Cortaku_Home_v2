@@ -11,8 +11,10 @@ type Rgb = [number, number, number];
 export type Skin = {
   id: string;
   name: string;
-  /** Best score needed. */
+  /** Best score needed. Secret skins never unlock by score. */
   unlockAt: number;
+  /** Unlocked by finding something on the site instead (see Profile.secrets). */
+  secret?: boolean;
   /** Casing and screen colours. Omitted for the original art. */
   body?: Rgb;
   screen?: Rgb;
@@ -25,14 +27,16 @@ export const SKINS: Skin[] = [
   { id: 'sunset', name: 'Sunset', unlockAt: 1800, body: [255, 160, 72], screen: [255, 240, 196] },
   { id: 'midnight', name: 'Midnight', unlockAt: 3500, body: [92, 96, 205], screen: [120, 248, 255] },
   { id: 'gold', name: 'Gold', unlockAt: 10000, body: [255, 208, 64], screen: [255, 251, 222] },
+  // Caught the moon rabbit.
+  { id: 'tsuki', name: 'Tsuki', unlockAt: Infinity, secret: true, body: [204, 198, 232], screen: [255, 176, 206] },
 ];
 
 function getSkin(id: string): Skin {
   return SKINS.find((s) => s.id === id) ?? SKINS[0];
 }
 
-export function isUnlocked(skin: Skin, bestScore: number): boolean {
-  return bestScore >= skin.unlockAt;
+export function isUnlocked(skin: Skin, profile: { bestEver: number; secrets: string[] }): boolean {
+  return skin.secret ? profile.secrets.includes(skin.id) : profile.bestEver >= skin.unlockAt;
 }
 
 export type SkinSheet = { source: CanvasImageSource; url: string; width: number; height: number };

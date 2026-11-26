@@ -25,31 +25,41 @@ export default function AppLauncher() {
     return () => { cancelled = true; };
   }, []);
 
+  const allAsleep = status !== null && APPS.every((app) => status[app.id] === false);
+
   return (
-    <ul className="launcher">
-      {APPS.map((app) => {
-        const Icon = ICONS[app.id];
-        const up = status?.[app.id];
-        const state = up === undefined ? 'checking' : up ? 'up' : 'down';
-        const label = state === 'checking' ? 'Checking' : state === 'up' ? 'Online' : 'Not responding';
-        return (
-          <li key={app.id}>
-            <a href={app.url} target="_blank" rel="noopener noreferrer" className="tile" data-hue={app.hue}>
-              <span className="tile-icon">
-                <Icon className="size-6" aria-hidden="true" />
-              </span>
-              <span className="tile-text">
-                <span className="tile-title">{app.title}</span>
-                <span className="tile-blurb">{app.blurb}</span>
-              </span>
-              <span className="status" data-state={state} title={label}>
-                <span className="sr-only">{label}</span>
-              </span>
-              <ArrowUpRight className="tile-arrow size-4" aria-hidden="true" />
-            </a>
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      {allAsleep && (
+        <p className="launcher-note" role="status">
+          <span className="launcher-zzz" aria-hidden="true">z<span>z</span><span>z</span></span>
+          The homelab is napping right now. These apps will be back when it wakes up.
+        </p>
+      )}
+      <ul className="launcher">
+        {APPS.map((app) => {
+          const Icon = ICONS[app.id];
+          const up = status?.[app.id];
+          const state = up === undefined ? 'checking' : up ? 'up' : 'asleep';
+          const label = state === 'checking' ? 'Checking' : state === 'up' ? 'Online' : 'Napping';
+          return (
+            <li key={app.id}>
+              <a href={app.url} target="_blank" rel="noopener noreferrer" className="tile" data-hue={app.hue}>
+                <span className="tile-icon">
+                  <Icon className="size-6" aria-hidden="true" />
+                </span>
+                <span className="tile-text">
+                  <span className="tile-title">{app.title}</span>
+                  <span className="tile-blurb">{app.blurb}</span>
+                </span>
+                <span className="status" data-state={state} title={label}>
+                  <span className="sr-only">{label}</span>
+                </span>
+                <ArrowUpRight className="tile-arrow size-4" aria-hidden="true" />
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }

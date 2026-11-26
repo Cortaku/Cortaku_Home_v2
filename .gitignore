@@ -10,6 +10,7 @@ coverage/
 .DS_Store
 .vercel
 .wrangler/
+.dev.vars*
 
 npm-debug.log*
 *.tsbuildinfo

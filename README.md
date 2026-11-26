@@ -13,7 +13,7 @@ The site is a single page with four parts:
 | Home base | Links to six self-hosted apps, each with a live up/down indicator. |
 | Elsewhere | YouTube, Letterboxd, Instagram and email. |
 
-A header carries section links and a day/night toggle.
+A header carries section links and a paper lantern on a pull cord that switches day and night.
 
 ## 2. Stack
 
@@ -25,7 +25,7 @@ A header carries section links and a day/night toggle.
 | Styling | Tailwind CSS v4 for utilities; component styles in plain CSS (`src/app/globals.css`) |
 | Fonts | Bricolage Grotesque (text) and Pixelify Sans (arcade), via `next/font` |
 | Icons | lucide-react |
-| Theming | next-themes, class-based, follows the system setting |
+| Theming | next-themes, class-based; until a visitor picks, it follows their clock (night from 7 pm to 7 am) |
 | Game | Canvas 2D and Web Audio; no game library |
 | Leaderboard | Supabase (Postgres with row-level security), called from the browser over REST |
 | Tests | Vitest |
@@ -37,7 +37,7 @@ There is no `.env` file and no server-side secret. The only runtime dependencies
 
 ### 3.1 Rendering
 
-`next build` exports the whole site as static files (`output: 'export'`). `src/app/page.tsx` is prerendered to HTML and the interactive parts are client components mounted into it. There is no Next.js server in production; the one dynamic endpoint, `/api/status`, is served by the Cloudflare Worker in `worker/index.ts`.
+`next build` exports the whole site as static files (`output: 'export'`). `src/app/page.tsx` is prerendered to HTML and the interactive parts are client components mounted into it. There is no Next.js server in production; the dynamic endpoints (`/api/status`, `/api/run` and `/api/score`) are served by the Cloudflare Worker in `worker/index.ts`.
 
 ### 3.2 Layout of the source
 
@@ -50,10 +50,11 @@ src/
     globals.css           design tokens and all component styles
     icon.svg              favicon (the robot)
     opengraph-image.tsx   share card, generated at build time
+    not-found.tsx         the 404 page
   components/
     ArcadeProvider.tsx    game open/close, scene, scores, easter eggs
     Hero.tsx              parallax scene, title, Play button
-    Petals.tsx            petal canvas
+    Petals.tsx            seasonal particle canvas (sakura, fireflies, maple, snow)
     Mascot.tsx            the robot on the homepage
     JumpGame.tsx          game shell: menus, HUD, input, score entry
     ScoreBoard.tsx        two-tab leaderboard (used on the page and in the game)
@@ -61,10 +62,15 @@ src/
     SkinPicker.tsx        skin selection (used on the page and in the game)
     AppLauncher.tsx       app tiles with status dots
     EmailCard.tsx         email link that also copies the address
-    ThemeToggle.tsx, Logo.tsx
+    ThemeToggle.tsx       the lantern theme switch
+    MoonRabbit.tsx        the rabbit let out on the fifth pull
+    FallenLantern.tsx     the lantern after its cord snaps
+    Logo.tsx
   game/
     sim.ts                rules (see 4.1)
     sim.test.ts           tests for the rules
+    replay.ts             run recording format and the replay the Worker verifies with
+    share.ts              the shareable run result
     engine.ts             fixed-step loop and renderer (see 4.2)
     assets.ts             image loading, scenes, obstacle sprites
     skins.ts              skin definitions and recolouring
@@ -73,11 +79,15 @@ src/
   lib/
     site.ts               all site content and configuration
     scores.ts             leaderboard client
-worker/index.ts           Cloudflare Worker: /api/status and the leaderboard keep-alive
+    motion.ts             reduced-motion check
+    theme.ts              theme-by-clock script
+worker/index.ts           Cloudflare Worker: app status, run tickets, verified score posts, keep-alive
 wrangler.jsonc            Cloudflare deployment config
 supabase/migrations/      leaderboard schema and access rules
 tools/scenes/tokyo.lua    Aseprite script that draws the scenes
+tools/sprites/lantern.lua Aseprite script that draws the lantern, tassel and rabbit
 public/game-assets/       scene layers, robot sprite sheet, sounds
+public/sprites/           lantern, tassel and rabbit sprites
 ```
 
 ### 3.3 Configuration
@@ -138,7 +148,7 @@ Obstacles are the 💩 emoji in whatever font the visitor's device provides. Bec
 
 ### 4.5 Skins
 
-Six recolours of the robot sprite sheet, unlocked by the player's best score in any mode:
+Recolours of the robot sprite sheet. Six unlock with the player's best score in any mode; one is a secret:
 
 | Skin | Unlocks at |
 | --- | --- |
@@ -148,6 +158,7 @@ Six recolours of the robot sprite sheet, unlocked by the player's best score in 
 | Sunset | 1,800 |
 | Midnight | 3,500 |
 | Gold | 10,000 |
+| Tsuki | catch the moon rabbit (see section 6); shown as a locked "???" until then |
 
 `skins.ts` recolours the sheet in the browser, keeping the original outlines and shading. The chosen skin is worn in the game and by the homepage mascot.
 
@@ -168,13 +179,13 @@ Jump and death effects play through Web Audio for low latency; a zone chime is s
 
 ### 4.8 Player data
 
-Stored in `localStorage` under `cortaku.profile`: best endless score, best score ever, today's daily best and its date, chosen skin, mute setting and last leaderboard name. The legacy `highScore` key from the original game is still read and written.
+Stored in `localStorage` under `cortaku.profile`: best endless score, best score ever, today's daily best and its date, chosen skin, mute setting, last leaderboard name and secret skins found. The legacy `highScore` key from the original game is still read and written.
 
 ## 5. Leaderboard
 
 ### 5.1 Design
 
-Scores live in one Supabase table, `cortaku_high_scores`. The browser reads and writes it directly through Supabase's REST API with the project's publishable key (`src/lib/scores.ts`). The site's own server is not involved, so the leaderboard stays available when the site's host is down.
+Scores live in one Supabase table, `cortaku_high_scores`. The browser reads it directly through Supabase's REST API with the project's publishable key (`src/lib/scores.ts`). Scores are posted through the Worker, which replays each run before saving it (5.4).
 
 ### 5.2 Schema
 
@@ -184,6 +195,7 @@ Scores live in one Supabase table, `cortaku_high_scores`. The browser reads and 
 | `player_name` | text | 1 to 15 characters |
 | `score` | integer | 0 to 1,000,000 |
 | `challenge_date` | date | null for an endless run; the UTC date for a daily run |
+| `run_id` | text, unique | the run ticket it came from, so each run posts once |
 | `ip_address` | text | set by trigger; not readable by clients |
 | `created_at` | timestamptz | set by trigger |
 
@@ -191,30 +203,43 @@ Scores live in one Supabase table, `cortaku_high_scores`. The browser reads and 
 
 All enforced in the database (`supabase/migrations/`):
 
-- Row-level security is on. Anonymous clients may select `id`, `player_name`, `score` and `challenge_date`, and insert `player_name`, `score` and `challenge_date`. Nothing else: no updates, no deletes, no access to `ip_address`.
+- Row-level security is on. Anonymous clients may select `id`, `player_name`, `score` and `challenge_date`. Nothing else: no updates, no deletes, no access to `ip_address`.
+- New scores go through `cortaku_post_score`, a `security definer` function that only accepts calls carrying the shared key in `private.cortaku_settings`. Only the Worker holds that key (its `RUN_SECRET`).
 - A daily score is accepted only for today's or yesterday's UTC date.
-- A `before insert` trigger trims the name, records the caller's address from the request headers, and rejects more than five posts a minute from one address.
+- A `before insert` trigger trims the name, records the visitor's address (passed along by the Worker), and rejects more than five posts a minute from one address.
 
-Scores are submitted by the client and are not verified against a replay, so the board is not cheat-proof.
+### 5.4 Verification
 
-### 5.4 Keep-alive
+The rules are deterministic (4.1), so a run is fully described by its seed and its inputs.
+
+1. When the game opens it asks `/api/run` for a ticket: a random id, the endless seed and the time, signed with HMAC-SHA256. A spare ticket is always fetched ahead, so starting a run never waits on the network.
+2. The engine records every press and release by simulation tick (`replay.ts`).
+3. To post, the browser sends the ticket, the inputs, the name and the score to `/api/score`. The Worker checks the signature and the ticket's age, replays the inputs through the same `Sim` (the daily seed comes from the date), and requires the replay to die with the claimed score. It also refuses a run that arrives faster than it took to play. Only then does it post the replayed score.
+
+This stops edited scores, forged requests and instant scripted runs. A bot that plays in real time could still get through; stopping that would need the server to run the game live. A run started offline (no ticket) still plays, but can't be posted. Replaying 25 minutes of play takes about 17 ms; typical runs take 1 to 2 ms.
+
+### 5.5 Keep-alive
 
 Supabase pauses free-plan projects that see little activity for about a week. The Worker has a cron trigger that reads the leaderboard every 12 hours, which keeps the project active.
 
-### 5.5 Other tables
+### 5.6 Other tables
 
 The same Supabase project holds an unrelated Mealie database. The second migration enables row-level security on those tables with no policies, which closes them to the publishable key.
 
 ## 6. Homepage features
 
 - **Hero.** The five scene layers scroll at different speeds with CSS animations and lean toward the pointer. A button steps through the scenes.
-- **Petals.** One canvas of pixel petals that drift on a breeze following the pointer; a click or tap throws a burst. It stops when off-screen or while the game is open.
+- **Seasons.** One canvas of pixel particles on a breeze that follows the pointer; a click or tap throws a burst. They follow the visitor's month: sakura in spring, glowing fireflies in summer, maple leaves in autumn, snow in winter (`?season=winter` and so on overrides it). It stops when off-screen or while the game is open.
 - **Mascot.** The robot runs in place, hops when clicked, and speaks up after seven seconds of inactivity.
 - **Game launch.** Opening and closing the game uses the View Transitions API to morph between the hero scene and the game. The game code is loaded on demand.
-- **App launcher.** The Worker's `/api/status` sends a `HEAD` request to each app with a 4 s timeout and caches the result at the edge for 60 s. Any response below 500 counts as up, since a login redirect still means the app is running.
+- **App launcher.** The Worker's `/api/status` sends a `HEAD` request to each app with a 4 s timeout and caches the result at the edge for 60 s. Any response below 500 counts as up, since a login redirect still means the app is running. An app that doesn't answer is shown as napping, and when all of them are down a note says the homelab is asleep.
 - **Email.** The email card opens a pre-addressed message and also copies the address, because a `mailto:` link does nothing on a machine with no mail app.
 - **Share card.** `opengraph-image.tsx` generates the social preview image at build time.
-- **Easter eggs.** Toggling the theme five times, or entering the Konami code, triggers a short rainbow party.
+- **Theme lantern.** A pixel paper lantern hangs from the top of the screen, unlit by day and glowing at night. Clicking it, or dragging its tassel down, switches the theme with a tug and a swing. Until a visitor pulls it, the theme follows their clock, set by a script in `<head>` before the first paint.
+- **Sharing.** After a run, Share copies a short result (one 🌸 per zone cleared, then the crash and the score; daily runs are numbered). Phones open the share sheet instead.
+- **404.** A missing page shows the hero scene standing still, with the robot stopped at a gap in the road.
+- **Analytics.** Cloudflare Web Analytics, cookieless, loaded only on cortaku.com itself so local and preview visits don't count.
+- **Easter eggs.** The fifth pull lets a moon rabbit out of the lantern to hop across the road; catching it unlocks the secret Tsuki skin. The tenth snaps the cord: the lantern falls onto the hero's road and stays there until reload, and both it and the cord stub still switch the theme. The Konami code triggers a short rainbow party.
 - **Accessibility.** All motion (parallax, petals, mascot, transitions) is disabled under `prefers-reduced-motion`. Controls are keyboard reachable and labelled.
 
 ## 7. Build and run
@@ -228,7 +253,13 @@ npm install
 npm run dev
 ```
 
-The site is served at http://localhost:3000. No configuration is needed.
+The site is served at http://localhost:3000. No configuration is needed, but the Worker endpoints don't exist there: app status stays "checking" and scores can't be posted.
+
+To run the Worker locally, put the run secret in a `.dev.vars` file (gitignored) and use `npm run preview`:
+
+```
+RUN_SECRET=<the same value as the database's score_key>
+```
 
 ### Scripts
 
@@ -241,8 +272,6 @@ The site is served at http://localhost:3000. No configuration is needed.
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |
 
-`npm run dev` does not run the Worker, so the app status dots stay in their "checking" state there. Use `npm run preview` to exercise `/api/status`.
-
 ### Hosting
 
 The site runs on Cloudflare Workers as `cortaku-home`, configured in `wrangler.jsonc`:
@@ -250,13 +279,20 @@ The site runs on Cloudflare Workers as `cortaku-home`, configured in `wrangler.j
 - The static export in `./out` is served as Worker assets. Requests for files never run Worker code.
 - Only `/api/*` reaches the Worker (`worker/index.ts`).
 - A cron trigger runs the leaderboard keep-alive every 12 hours.
+- The secret `RUN_SECRET` signs run tickets and authorises score posts (`npx wrangler secret put RUN_SECRET`). It must match `score_key` in the database's `private.cortaku_settings`.
 - `www.cortaku.com` and `cortaku.com` are attached as custom domains.
 
 Pushing to `main` on GitHub deploys automatically through Cloudflare Workers Builds, which runs `npm run build` and then `npx wrangler deploy`.
 
 ### Pointing at a different Supabase project
 
-Run `supabase/migrations/20261124000000_create_cortaku_high_scores.sql` in the new project, then change `SUPABASE_URL` and `SUPABASE_KEY` in `src/lib/site.ts`.
+Run the migrations in `supabase/migrations/` in order, then store the run secret (never committed):
+
+```sql
+insert into private.cortaku_settings (name, value) values ('score_key', '<RUN_SECRET>');
+```
+
+Change `SUPABASE_URL` and `SUPABASE_KEY` in `src/lib/site.ts`, and set the same `RUN_SECRET` on the Worker.
 
 ## 8. Tests
 
@@ -268,7 +304,11 @@ Run `supabase/migrations/20261124000000_create_cortaku_high_scores.sql` in the n
 - a robot that never jumps dies
 - every course is beatable: a scripted player survives three minutes on 150 different courses
 
-The engine, UI and leaderboard client have no automated tests.
+`src/game/replay.test.ts` covers verification: recorded runs replay to exactly the same score and length (up to 25 minutes of play), a different seed or doctored inputs give a different result, malformed input lists are refused, and a long replay stays fast.
+
+`src/game/share.test.ts` covers the share text and daily numbering. `src/game/road.test.ts` covers the road palette.
+
+The engine and UI have no automated tests.
 
 ## 9. License
 

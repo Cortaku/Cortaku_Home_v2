@@ -19,7 +19,12 @@ type Arcade = {
   scene: number;
   nextScene: () => void;
   party: () => void;
+  /** Where the theme lantern was when its cord snapped, in viewport px; null while it still hangs. */
+  fallenLantern: Point | null;
+  dropLantern: (at: Point) => void;
 };
+
+export type Point = { x: number; y: number };
 
 const ArcadeContext = createContext<Arcade | null>(null);
 
@@ -46,6 +51,7 @@ export default function ArcadeProvider({ children }: { children: React.ReactNode
   const [scoreState, setScoreState] = useState<ScoreState>('loading');
   const [scene, setScene] = useState(DEFAULT_SCENE);
   const [confetti, setConfetti] = useState<Confetti[] | null>(null);
+  const [fallenLantern, dropLantern] = useState<Point | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const partyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -121,8 +127,8 @@ export default function ArcadeProvider({ children }: { children: React.ReactNode
   }, [isOpen, openGame, party]);
 
   const value = useMemo(
-    () => ({ isOpen, openGame, scores, scoreState, scene, nextScene, party }),
-    [isOpen, openGame, scores, scoreState, scene, nextScene, party],
+    () => ({ isOpen, openGame, scores, scoreState, scene, nextScene, party, fallenLantern, dropLantern }),
+    [isOpen, openGame, scores, scoreState, scene, nextScene, party, fallenLantern],
   );
 
   return (

@@ -4,7 +4,10 @@ export const SITE_URL = 'https://www.cortaku.com';
 export const SUPABASE_URL = 'https://giqylsntwontlxqrppto.supabase.co';
 export const SUPABASE_KEY = 'sb_publishable_gbvl5dHFQFgboRczPUcSPg_U25_ZHgc';
 
-export const TAGLINE = 'Sakura, sprites, and sights.';
+/** Cloudflare Web Analytics beacon token: public, cookieless. Only loaded on cortaku.com itself. */
+export const ANALYTICS_TOKEN = 'ec6b45de5df54c299101ffe9eb980b9d';
+
+export const TAGLINE = 'Sakura, sprites, and sights';
 
 export type AppLink = {
   id: string;

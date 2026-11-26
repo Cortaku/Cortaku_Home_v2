@@ -118,19 +118,128 @@ kbd {
 
 .site-tools { display: flex; align-items: center; gap: 0.5rem; }
 
-.icon-button {
-  display: grid;
-  place-items: center;
+/* The theme switch: a paper lantern hanging from the top of the screen, lit at night. Sprites at 2x. */
+.lantern {
+  position: relative;
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background 0.2s;
+  cursor: grab;
+  touch-action: none;
 }
-.icon-button:hover { background: var(--accent-soft); }
-.theme-sun { display: none; }
-.dark .theme-sun { display: block; }
-.dark .theme-moon { display: none; }
+.lantern:active { cursor: grabbing; }
+.lantern:focus-visible { outline: none; }
+.lantern:focus-visible .lantern-body { outline: 2px solid var(--accent); outline-offset: 3px; }
+.lantern-rig {
+  position: absolute;
+  top: calc(-0.6rem - 1px);
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  translate: -50% 0;
+  transform-origin: 50% 0;
+}
+.lantern-cord,
+.lantern-string { width: 2px; background: var(--ink); opacity: 0.75; }
+.lantern-cord { position: relative; height: 10px; }
+.lantern-body {
+  width: 28px;
+  height: 40px;
+  background: url('/sprites/lantern-off.png') 0 0 / 100% 100%;
+  image-rendering: pixelated;
+  transition: filter 0.3s;
+}
+.dark .lantern-body {
+  background-image: url('/sprites/lantern-on.png');
+  filter: drop-shadow(0 0 10px rgb(255 179 71 / 0.75));
+}
+.lantern-string { height: calc(4px + var(--pull, 0px)); transition: height 0.35s cubic-bezier(0.3, 1.8, 0.5, 1); }
+.lantern-rig[data-dragging] .lantern-string { transition: none; }
+.lantern-tassel {
+  width: 8px;
+  height: 16px;
+  background: url('/sprites/tassel.png') 0 0 / 100% 100%;
+  image-rendering: pixelated;
+}
+.lantern:hover .lantern-tassel { animation: tassel-wiggle 0.6s ease-in-out; transform-origin: 50% 0; }
+@keyframes tassel-wiggle {
+  33% { rotate: 12deg; }
+  66% { rotate: -8deg; }
+}
+
+/* After ten pulls the cord snaps: a frayed stub springs back up. */
+.lantern.is-snapped .lantern-cord { height: 1.6rem; animation: cord-recoil 0.7s cubic-bezier(0.3, 1.6, 0.5, 1); transform-origin: 50% 0; }
+.lantern.is-snapped .lantern-cord::before,
+.lantern.is-snapped .lantern-cord::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 1px;
+  height: 4px;
+  background: inherit;
+  transform-origin: 50% 0;
+}
+.lantern.is-snapped .lantern-cord::before { rotate: 30deg; }
+.lantern.is-snapped .lantern-cord::after { left: 1px; rotate: -30deg; }
+@keyframes cord-recoil {
+  from { scale: 1 3; }
+}
+
+.fallen-lantern {
+  position: absolute;
+  bottom: 22.2%;
+  width: 62px;
+  height: 28px;
+  z-index: 2;
+  cursor: pointer;
+}
+.fallen-lantern-inner {
+  position: absolute;
+  left: 17px;
+  top: -17px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 28px;
+  height: 62px;
+  rotate: 90deg;
+}
+.fallen-lantern .lantern-cord { height: 2px; }
+
+.moon-rabbit {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 39;
+  background: url('/sprites/rabbit.png') 0 0 / 200% 100% no-repeat;
+  image-rendering: pixelated;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.moon-rabbit.is-caught { z-index: 45; cursor: default; animation: rabbit-vanish 2.6s ease-in forwards; }
+@keyframes rabbit-vanish {
+  80% { opacity: 1; }
+  to { opacity: 0; }
+}
+.moon-rabbit-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.5rem);
+  translate: -50% 0;
+  width: max-content;
+  max-width: 15rem;
+  padding: 0.4rem 0.7rem;
+  background: #fff;
+  color: var(--ink-fixed);
+  border: 3px solid var(--ink-fixed);
+  font-family: var(--font-pixel);
+  font-size: 0.9rem;
+  line-height: 1.2;
+  text-align: center;
+  animation: bubble-in 0.25s ease-out;
+}
+.skin.is-secret:disabled .skin-art { filter: brightness(0) opacity(0.45); }
 
 /* ---------- Hero: the game's attract mode ---------- */
 
@@ -364,6 +473,29 @@ kbd {
 }
 .scene-switch:hover { border-color: var(--accent); }
 
+/* ---------- 404: the robot at a gap in the road ---------- */
+
+.lost {
+  position: relative;
+  height: var(--scene-h);
+  overflow: hidden;
+  isolation: isolate;
+}
+.lost-brand { position: absolute; top: 1rem; left: clamp(1rem, 4vw, 2rem); z-index: 4; }
+.lost-road {
+  animation: none;
+  mask: linear-gradient(90deg, #000 0 56%, transparent 56% 70%, #000 70%);
+}
+.lost-robot {
+  position: absolute;
+  left: calc(56% - var(--scene-h) * 70 / 450);
+  bottom: 22.2%;
+  width: calc(var(--scene-h) * 80 / 450);
+  height: calc(var(--scene-h) * 80 / 450);
+  z-index: 2;
+}
+.lost-robot .mascot-bubble { left: 30%; }
+
 /* ---------- Sections ---------- */
 
 .section { padding: clamp(4rem, 9vw, 7rem) clamp(1.25rem, 4vw, 2rem); }
@@ -479,7 +611,33 @@ kbd {
   background: var(--line);
 }
 .status[data-state='up'] { background: #35c47c; box-shadow: 0 0 0 4px color-mix(in srgb, #35c47c 22%, transparent); }
-.status[data-state='down'] { background: #ef5466; }
+.status[data-state='asleep'] { background: #a89fc6; }
+.tile:has(.status[data-state='asleep']) .tile-icon { filter: saturate(0.4); opacity: 0.75; }
+
+.launcher-note {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 0.8rem 1.1rem;
+  border: 1px dashed var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  color: var(--muted);
+}
+.launcher-zzz {
+  flex: none;
+  font-family: var(--font-pixel);
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+.launcher-zzz span { display: inline-block; animation: zzz 2.4s ease-in-out infinite; }
+.launcher-zzz span:nth-child(1) { font-size: 0.85em; animation-delay: 0.4s; }
+.launcher-zzz span:nth-child(2) { font-size: 0.7em; animation-delay: 0.8s; }
+@keyframes zzz {
+  0%, 100% { translate: 0 0; opacity: 1; }
+  50% { translate: 0 -0.35em; opacity: 0.5; }
+}
 .status[data-state='checking'] { animation: blink 1s ease-in-out infinite alternate; }
 @keyframes blink { to { opacity: 0.3; } }
 
@@ -583,7 +741,8 @@ html[data-arcade-open] .scene-ground { animation-play-state: paused; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .scene-layer, .scene-ground, .party, .status, .mascot-sprite, .mascot-bubble { animation: none !important; }
+  .scene-layer, .scene-ground, .party, .status, .mascot-sprite, .mascot-bubble, .lantern-tassel, .lantern-cord, .launcher-zzz span { animation: none !important; }
+  .lantern-string { transition: none; }
   .scene-layer { transition: none; }
 }
 
@@ -785,6 +944,7 @@ html[data-arcade-open] .scene-ground { animation-play-state: paused; }
 }
 .game-link svg { width: 1.1em; height: 1.1em; }
 .game-link:hover { color: #ffd84d; }
+.game-links { display: flex; flex-wrap: wrap; justify-content: center; gap: calc(var(--u) * 22); }
 
 .game-died { width: calc(var(--u) * 380); max-width: 80%; image-rendering: pixelated; }
 .game-final {
