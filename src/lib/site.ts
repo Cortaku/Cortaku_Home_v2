@@ -45,5 +45,10 @@ export const SCENE_COUNT = 4;
  * (tools/scenes/tokyo.lua). The homepage puts it at the same fraction of the screen, once.
  */
 export const SUN_X: Record<number, number> = { 1: 452 / 576, 2: 280 / 576, 3: 300 / 576, 4: 404 / 576 };
+/**
+ * The layers of each scene with a landmark image (`N-landmark.png`: Fuji, the towers, pagodas, gates, the
+ * train), from tools/scenes/tokyo.lua. Those landmarks pass the screen one at a time instead of tiling.
+ */
+export const LANDMARK_LAYERS: Record<number, number[]> = { 1: [2, 3, 4], 2: [2], 3: [4], 4: [4] };
 /** The scene the homepage and the game open with. */
 export const DEFAULT_SCENE = 1;

@@ -4,7 +4,9 @@
 -- the global SCENE_OUT_DIR to public/game-assets/Backgrounds. Each set is five
 -- 576x324 layers for day and for night: layer 1 is the sky, layers 2-5 are
 -- transparent and tile horizontally. sun.png holds the sun (or the moon at
--- night) and is drawn once, never tiled.
+-- night) and is drawn once, never tiled. N-landmark.png holds the landmarks of
+-- layer N (Fuji, the towers, pagodas, gates, the train): drawn on top of that
+-- layer and moving with it, but only once across the screen at a time.
 --
 -- Everything is drawn from code with a seeded random generator, so a rerun
 -- reproduces the same art and a tweak to a palette or a shape is one edit.
@@ -398,23 +400,25 @@ local function sceneFuji(time)
   out[2] = layer()
   out.sun = layer()
   if night then moon(out.sun, 452, 62, 15) else sun(out.sun, 452, 70, 17, '#fff6d8', '#fff0c0') end
-  fuji(out[2], 210, 74, 236, 176, hex(p[3]), night and hex('#c9cdf0') or hex('#ffffff'))
+  out.marks = { [2] = layer(), [3] = layer(), [4] = layer() }
+  out.behind = { [2] = true }
+  fuji(out.marks[2], 210, 74, 236, 176, hex(p[3]), night and hex('#c9cdf0') or hex('#ffffff'))
   hills(out[2], 232, 8, mix(p[3], p[4], 0.4), 0.6, 2, 5)
 
   srand(903)
   out[3] = layer()
   local land3 = hills(out[3], 228, 9, hex(p[4]), 2.1, 3, 7)
-  pagoda(out[3], 438, footing(land3, 423, 453), 5, hex(p[4]))
+  pagoda(out.marks[3], 438, footing(land3, 423, 453), 5, hex(p[4]))
   for _, x in ipairs({ 40, 62, 92, 300, 330, 520, 548 }) do pine(out[3], x, footing(land3, x, x + 1), ri(16, 24), hex(p[4])) end
 
   srand(904)
   out[4] = layer()
   local land4 = hills(out[4], 244, 5, hex(p[5]), 4.0, 2, 6)
-  torii(out[4], 120, footing(land4, 103, 137), 1.7, night and hex('#7a2238') or hex('#d8455a'))
+  torii(out.marks[4], 120, footing(land4, 103, 137), 1.7, night and hex('#7a2238') or hex('#d8455a'))
   local pagodaBase = footing(land4, 308, 328)
-  pagoda(out[4], 318, pagodaBase, 3, hex(p[5]))
+  pagoda(out.marks[4], 318, pagodaBase, 3, hex(p[5]))
   for _, x in ipairs({ 20, 190, 214, 400, 470, 496, 560 }) do pine(out[4], x, footing(land4, x, x + 1), ri(22, 34), hex(p[5])) end
-  rect(out[4], 318 - 4, pagodaBase - 6, 3, 3, lit)
+  rect(out.marks[4], 318 - 4, pagodaBase - 6, 3, 3, lit)
 
   srand(905)
   out[5] = layer()
@@ -453,8 +457,9 @@ local function sceneNeon(time)
   out.sun = layer()
   if night then moon(out.sun, 280, 54, 12) else sun(out.sun, 280, 60, 14, '#fffbe8', '#ffe9c4') end
   skyline(out[2], 120, 190, 14, 30, H, hex(p[3]), windows(3), litChance * 0.5)
-  skytree(out[2], 150, 232, 168, hex(p[3]), night and hex('#9ad8ff') or mix(p[3], '#ffffff', 0.4))
-  tokyoTower(out[2], 408, 232, 150,
+  out.marks = { [2] = layer() }
+  skytree(out.marks[2], 150, 232, 168, hex(p[3]), night and hex('#9ad8ff') or mix(p[3], '#ffffff', 0.4))
+  tokyoTower(out.marks[2], 408, 232, 150,
     night and hex('#ff7a3c') or hex('#e8553f'),
     night and hex('#ffe9b0') or hex('#f6f1ea'))
 
@@ -529,7 +534,9 @@ local function sceneRail(time)
   out[4] = layer()
   ground(out[4], 250, hex(p[5]))
   viaduct(out[4], 210, 250, hex(p[5]))
-  train(out[4], 70, 207, 4,
+  out.marks = { [4] = layer() }
+  out.behind = { [4] = true }
+  train(out.marks[4], 70, 207, 4,
     night and hex('#2b3a6a') or hex('#f1ece4'),
     night and hex('#ff7a3c') or hex('#e8553f'),
     lit)
@@ -656,8 +663,10 @@ local function sceneBamboo(time)
   out[4] = layer()
   canopy(out[4], 22, 8, hex(p[5]), 4.1, 2, 6)
   local land = hills(out[4], 246, 4, hex(p[5]), 0.5, 2, 6)
-  teaHouse(out[4], 300, footing(land, 300, 339), hex(p[5]), mix(p[5], p[6], 0.6), lit)
-  torii(out[4], 124, footing(land, 109, 139), 1.5, night and hex('#7a2238') or hex('#d8455a'))
+  out.marks = { [4] = layer() }
+  out.behind = { [4] = true }
+  teaHouse(out.marks[4], 300, footing(land, 300, 339), hex(p[5]), mix(p[5], p[6], 0.6), lit)
+  torii(out.marks[4], 124, footing(land, 109, 139), 1.5, night and hex('#7a2238') or hex('#d8455a'))
   grove(out[4], 250, 58, 14, 5, 2, 28, hex(p[5]), joint(5), hex(p[5]))
   if night then
     -- Fireflies. Drawn last so the extra random numbers cannot shift anything else in the layer.
@@ -685,6 +694,17 @@ end
 
 -- ---------- Output ----------
 
+-- A landmark marked `behind` sits behind everything else in its layer (hills, stalks, masts): clear
+-- whatever of it the layer covers, since the landmark image is drawn on top of the layer.
+local function tuckBehind(mark, img)
+  local clear = pc.rgba(0, 0, 0, 0)
+  for y = 0, H - 1 do
+    for x = 0, W - 1 do
+      if pc.rgbaA(img:getPixel(x, y)) > 0 then mark:drawPixel(x, y, clear) end
+    end
+  end
+end
+
 local SCENES = { [1] = sceneFuji, [2] = sceneNeon, [3] = sceneRail, [4] = sceneBamboo }
 
 local written = 0
@@ -697,6 +717,11 @@ for set, build in pairs(SCENES) do
     end
     layers.sun:saveAs(OUT .. '/' .. set .. '/' .. time .. '/sun.png')
     written = written + 1
+    for n, mark in pairs(layers.marks or {}) do
+      if layers.behind and layers.behind[n] then tuckBehind(mark, layers[n]) end
+      mark:saveAs(OUT .. '/' .. set .. '/' .. time .. '/' .. n .. '-landmark.png')
+      written = written + 1
+    end
   end
 end
 print('wrote ' .. written .. ' layers to ' .. OUT)

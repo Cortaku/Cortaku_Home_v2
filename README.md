@@ -140,6 +140,8 @@ The homepage and every run open on scene 1. Each new zone moves to the next set 
 
 **Format.** `public/game-assets/Backgrounds/<set>/<day|night>/1.png` to `5.png`, each 576 × 324. Layer 1 is an opaque sky; layers 2 to 5 are transparent and tile horizontally. `sun.png`, the same size, holds just the sun (the moon at night). It is drawn once and never tiled, between the sky and layer 2, so a wide screen shows one sun; the homepage places it at the same fraction of the screen width as it sits in the tile (`SUN_X` in `src/lib/site.ts`, which must match the script).
 
+**Landmarks.** Fuji, the towers, the pagodas, the gates, the tea house and the train live in `N-landmark.png`, drawn over layer N. On the homepage each crosses the screen once at its layer's speed, then comes back from off the right edge, so a wide screen shows one of each at a time; a pass is always a whole number of tiles, so a landmark comes back to the same patch of hill. Landmarks the script marks `behind` (Fuji, the train, the tea house and its gate) have whatever of the layer covers them cut out. The 404 page shows them once, centred. In the game the view is one tile wide, so they simply move with their layer. Which layers have one is listed in `LANDMARK_LAYERS` in `src/lib/site.ts`, which must match the script.
+
 **Source.** All four are drawn by `tools/scenes/tokyo.lua`, a script run inside Aseprite. It builds each layer from shape functions and a seeded random generator, and draws day and night from the same layout with different palettes. To regenerate, set the global `SCENE_OUT_DIR` to the `Backgrounds` folder and run the script. To add a scene, add a scene function to the script and raise `SCENE_COUNT`.
 
 ### 4.4 Obstacle art

@@ -281,6 +281,26 @@ kbd {
 /* Hero sets background-position-x so the sun lands at the same fraction of the screen as of its tile. */
 .scene-sun { background-repeat: no-repeat; }
 
+/*
+ * One copy of a layer's landmarks, moving at the layer's speed (one tile per --seconds) from off the right edge
+ * to just off the left, then starting over. A pass is --mark-n whole tiles (Hero: enough to clear the box,
+ * plus one), so the landmark always comes back on the layer's tile grid and stays on its own patch of hill.
+ * The negative delay starts with the tile at the left edge, where the layer itself starts; reduced motion
+ * leaves it there.
+ */
+.scene-landmark {
+  --tile: calc(var(--scene-h) * 16 / 9);
+  background-repeat: no-repeat;
+  background-position-x: 0;
+  animation: landmark-drift linear infinite;
+  animation-duration: calc(var(--seconds) * var(--mark-n, 2) * 1s);
+  animation-delay: calc(var(--seconds) * (var(--mark-n, 2) - 1) * -1s);
+}
+@keyframes landmark-drift {
+  from { background-position-x: calc(var(--tile) * (var(--mark-n, 2) - 1)); }
+  to { background-position-x: calc(var(--tile) * -1); }
+}
+
 /* One tile of art is 16:9 at full height; slide exactly one tile and loop. */
 .scene-layer.is-moving {
   right: calc(var(--scene-h) * -16 / 9 - 2rem);

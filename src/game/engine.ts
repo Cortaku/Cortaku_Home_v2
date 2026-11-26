@@ -422,6 +422,11 @@ export class Engine {
       const x = -this.snap((dist * LAYER_SPEEDS[i]) % VIEW_W);
       ctx.drawImage(scene.layers[i], x, 0, VIEW_W + 0.5, VIEW_H);
       ctx.drawImage(scene.layers[i], x + VIEW_W, 0, VIEW_W + 0.5, VIEW_H);
+      const mark = scene.marks[i];
+      if (mark) {
+        ctx.drawImage(mark, x, 0, VIEW_W + 0.5, VIEW_H);
+        ctx.drawImage(mark, x + VIEW_W, 0, VIEW_W + 0.5, VIEW_H);
+      }
     }
     ctx.globalAlpha = 1;
   }

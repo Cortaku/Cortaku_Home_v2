@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import Logo from '@/components/Logo';
-import { SUN_X } from '@/lib/site';
+import { LANDMARK_LAYERS, SUN_X } from '@/lib/site';
 
 export const metadata: Metadata = { title: 'Lost · Cortaku' };
 
@@ -28,6 +28,18 @@ export default function NotFound() {
                 />
               ),
               <div key={n} className="scene-layer" style={{ backgroundImage: `url(/game-assets/Backgrounds/${SCENE}/${time}/${n}.png)` }} />,
+              // One copy of each landmark, centred, rather than one per tile.
+              LANDMARK_LAYERS[SCENE].includes(n) && (
+                <div
+                  key={`mark-${n}`}
+                  className="scene-layer"
+                  style={{
+                    backgroundImage: `url(/game-assets/Backgrounds/${SCENE}/${time}/${n}-landmark.png)`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPositionX: '50%',
+                  }}
+                />
+              ),
             ])}
           </div>
         ))}

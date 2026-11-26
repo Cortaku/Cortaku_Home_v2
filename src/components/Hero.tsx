@@ -6,7 +6,7 @@ import { useArcade } from './ArcadeProvider';
 import Petals from './Petals';
 import Mascot from './Mascot';
 import FallenLantern from './FallenLantern';
-import { SCENE_COUNT, SUN_X, TAGLINE } from '@/lib/site';
+import { LANDMARK_LAYERS, SCENE_COUNT, SUN_X, TAGLINE } from '@/lib/site';
 import { loadImage } from '@/game/assets';
 import { roadPalette, sampleGround } from '@/game/road';
 
@@ -33,7 +33,25 @@ function SceneSun({ scene, time }: { scene: number; time: 'day' | 'night' }) {
   );
 }
 
+/**
+ * A layer's landmarks (Fuji, a tower, a gate), drawn over the layer and moving at its speed, but crossing the
+ * screen once before coming back rather than tiling, so a wide screen never shows two. See .scene-landmark.
+ */
+function SceneLandmark({ scene, time, layer }: { scene: number; time: 'day' | 'night'; layer: (typeof LAYERS)[number] }) {
+  return (
+    <div
+      className="scene-layer scene-landmark"
+      style={{
+        backgroundImage: `url(/game-assets/Backgrounds/${scene}/${time}/${layer.n}-landmark.png)`,
+        ['--seconds' as string]: layer.seconds,
+        ['--depth' as string]: layer.depth,
+      }}
+    />
+  );
+}
+
 function SceneStack({ scene, time }: { scene: number; time: 'day' | 'night' }) {
+  const landmarks = LANDMARK_LAYERS[scene] ?? [];
   return (
     <div className={`scene-stack scene-${time}`}>
       {LAYERS.map((layer) => [
@@ -47,6 +65,7 @@ function SceneStack({ scene, time }: { scene: number; time: 'day' | 'night' }) {
             ['--depth' as string]: layer.depth,
           }}
         />,
+        landmarks.includes(layer.n) && <SceneLandmark key={`mark-${layer.n}`} scene={scene} time={time} layer={layer} />,
       ])}
     </div>
   );
@@ -72,6 +91,21 @@ export default function Hero() {
       cancelAnimationFrame(raf);
       window.removeEventListener('pointermove', onMove);
     };
+  }, []);
+
+  // A landmark's pass is enough whole tiles to clear the screen, plus one; tell the CSS how many.
+  useEffect(() => {
+    const el = sceneRef.current;
+    if (!el) return;
+    const measure = () => {
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const tile = (el.clientHeight * 16) / 9;
+      if (tile > 0) el.style.setProperty('--mark-n', String(Math.ceil((el.clientWidth + 4 * rem) / tile) + 1));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   // Colour the road from the scene's ground, for both day and night.
