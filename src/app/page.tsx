@@ -40,10 +40,13 @@ export default function HomePage() {
           <div className="section-inner split">
             <div>
               <p className="eyebrow">The arcade</p>
-              <h2>One robot. One button. No mercy.</h2>
-              <p className="lede">
-                Dodge obstacles, survive the speed-ups, and claim a spot on the leaderboards.
-              </p>
+              <h2>
+                One robot,
+                <br />
+                One rule:
+                <br />
+                Jump.
+              </h2>
               <ul className="howto">
                 <li>Press <kbd>Space</kbd> or tap to jump; hold for higher airtime.</li>
                 <li>Clear each zone for a new backdrop and faster pace.</li>

@@ -34,7 +34,7 @@ export type SocialLink = { id: string; title: string; handle: string; url: strin
 export const SOCIALS: SocialLink[] = [
   { id: 'youtube', title: 'YouTube', handle: '@cortaku', url: 'https://www.youtube.com/@cortaku' },
   { id: 'letterboxd', title: 'Letterboxd', handle: 'ScreenPeeper', url: 'https://letterboxd.com/ScreenPeeper/' },
-  { id: 'instagram', title: 'Instagram', handle: '@cort.uwu', url: 'https://www.instagram.com/cort.uwu/' },
+  { id: 'instagram', title: 'Instagram', handle: '@cort.a_', url: 'https://www.instagram.com/cort.a_/' },
   { id: 'email', title: 'Email', handle: EMAIL, url: EMAIL_LINK },
 ];
 
