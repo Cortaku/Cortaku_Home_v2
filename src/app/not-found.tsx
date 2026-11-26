@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { SUN_X } from '@/lib/site';
 
 export const metadata: Metadata = { title: 'Lost · Cortaku' };
 
@@ -15,9 +16,19 @@ export default function NotFound() {
       <div className="scene" aria-hidden="true">
         {(['day', 'night'] as const).map((time) => (
           <div key={time} className={`scene-stack scene-${time}`}>
-            {LAYERS.map((n) => (
-              <div key={n} className="scene-layer" style={{ backgroundImage: `url(/game-assets/Backgrounds/${SCENE}/${time}/${n}.png)` }} />
-            ))}
+            {LAYERS.map((n) => [
+              n === 2 && (
+                <div
+                  key="sun"
+                  className="scene-layer scene-sun"
+                  style={{
+                    backgroundImage: `url(/game-assets/Backgrounds/${SCENE}/${time}/sun.png)`,
+                    backgroundPositionX: `${SUN_X[SCENE] * 100}%`,
+                  }}
+                />
+              ),
+              <div key={n} className="scene-layer" style={{ backgroundImage: `url(/game-assets/Backgrounds/${SCENE}/${time}/${n}.png)` }} />,
+            ])}
           </div>
         ))}
         <div className="scene-ground lost-road" />

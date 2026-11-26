@@ -40,5 +40,10 @@ export const SOCIALS: SocialLink[] = [
 
 /** Scene sets in public/game-assets/Backgrounds: 1 Fuji, 2 neon city, 3 railway, 4 bamboo forest. */
 export const SCENE_COUNT = 4;
+/**
+ * Where each scene's sun (and moon) sits across its 576 px tile, as a fraction of the width
+ * (tools/scenes/tokyo.lua). The homepage puts it at the same fraction of the screen, once.
+ */
+export const SUN_X: Record<number, number> = { 1: 452 / 576, 2: 280 / 576, 3: 300 / 576, 4: 404 / 576 };
 /** The scene the homepage and the game open with. */
 export const DEFAULT_SCENE = 1;

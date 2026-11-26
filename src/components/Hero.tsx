@@ -6,7 +6,7 @@ import { useArcade } from './ArcadeProvider';
 import Petals from './Petals';
 import Mascot from './Mascot';
 import FallenLantern from './FallenLantern';
-import { SCENE_COUNT, TAGLINE } from '@/lib/site';
+import { SCENE_COUNT, SUN_X, TAGLINE } from '@/lib/site';
 import { loadImage } from '@/game/assets';
 import { roadPalette, sampleGround } from '@/game/road';
 
@@ -19,10 +19,25 @@ const LAYERS = [
   { n: 5, seconds: 36, depth: 22 },
 ];
 
+/** The sun (or moon) on its own, drawn once and still, so a wide screen never shows two. */
+function SceneSun({ scene, time }: { scene: number; time: 'day' | 'night' }) {
+  return (
+    <div
+      className="scene-layer scene-sun"
+      style={{
+        backgroundImage: `url(/game-assets/Backgrounds/${scene}/${time}/sun.png)`,
+        backgroundPositionX: `${(SUN_X[scene] ?? 0.5) * 100}%`,
+        ['--depth' as string]: 2,
+      }}
+    />
+  );
+}
+
 function SceneStack({ scene, time }: { scene: number; time: 'day' | 'night' }) {
   return (
     <div className={`scene-stack scene-${time}`}>
-      {LAYERS.map((layer) => (
+      {LAYERS.map((layer) => [
+        layer.n === 2 && <SceneSun key="sun" scene={scene} time={time} />,
         <div
           key={layer.n}
           className={layer.seconds ? 'scene-layer is-moving' : 'scene-layer'}
@@ -31,8 +46,8 @@ function SceneStack({ scene, time }: { scene: number; time: 'day' | 'night' }) {
             animationDuration: `${layer.seconds}s`,
             ['--depth' as string]: layer.depth,
           }}
-        />
-      ))}
+        />,
+      ])}
     </div>
   );
 }

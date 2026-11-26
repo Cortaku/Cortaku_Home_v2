@@ -2,7 +2,8 @@ import { OBSTACLE_SIZES, type ObstacleKind } from './sim';
 import { roadPalette, sampleGround, type RoadPalette } from './road';
 
 export type DayTime = 'day' | 'night';
-export type Scene = { key: string; layers: HTMLImageElement[]; road: RoadPalette };
+/** `sun` is the sun (or moon) on its own, drawn once and still, between the sky and layer 2. */
+export type Scene = { key: string; layers: HTMLImageElement[]; sun: HTMLImageElement; road: RoadPalette };
 
 /** Scroll speed of each layer relative to the ground. Layer 0 is the still sky. */
 export const LAYER_SPEEDS = [0, 0.05, 0.15, 0.3, 0.5];
@@ -28,10 +29,12 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 export async function loadScene(set: number, time: DayTime): Promise<Scene> {
-  const layers = await Promise.all(
-    LAYER_SPEEDS.map((_, i) => loadImage(`/game-assets/Backgrounds/${set}/${time}/${i + 1}.png`)),
-  );
-  return { key: `${set}/${time}`, layers, road: roadPalette(sampleGround(layers[layers.length - 1])) };
+  const dir = `/game-assets/Backgrounds/${set}/${time}`;
+  const [sun, ...layers] = await Promise.all([
+    loadImage(`${dir}/sun.png`),
+    ...LAYER_SPEEDS.map((_, i) => loadImage(`${dir}/${i + 1}.png`)),
+  ]);
+  return { key: `${set}/${time}`, layers, sun, road: roadPalette(sampleGround(layers[layers.length - 1])) };
 }
 
 /** Transparent margin around each obstacle sprite for its glow, in game px. */

@@ -417,6 +417,7 @@ export class Engine {
     const { ctx } = this;
     ctx.globalAlpha = alpha;
     ctx.drawImage(scene.layers[0], 0, 0, VIEW_W, VIEW_H);
+    ctx.drawImage(scene.sun, 0, 0, VIEW_W, VIEW_H);
     for (let i = 1; i < scene.layers.length; i++) {
       const x = -this.snap((dist * LAYER_SPEEDS[i]) % VIEW_W);
       ctx.drawImage(scene.layers[i], x, 0, VIEW_W + 0.5, VIEW_H);

@@ -138,7 +138,7 @@ Four scene sets, each with a day and a night version, shared by the game and the
 
 The homepage and every run open on scene 1. Each new zone moves to the next set and flips between day and night.
 
-**Format.** `public/game-assets/Backgrounds/<set>/<day|night>/1.png` to `5.png`, each 576 × 324. Layer 1 is an opaque sky; layers 2 to 5 are transparent and tile horizontally.
+**Format.** `public/game-assets/Backgrounds/<set>/<day|night>/1.png` to `5.png`, each 576 × 324. Layer 1 is an opaque sky; layers 2 to 5 are transparent and tile horizontally. `sun.png`, the same size, holds just the sun (the moon at night). It is drawn once and never tiled, between the sky and layer 2, so a wide screen shows one sun; the homepage places it at the same fraction of the screen width as it sits in the tile (`SUN_X` in `src/lib/site.ts`, which must match the script).
 
 **Source.** All four are drawn by `tools/scenes/tokyo.lua`, a script run inside Aseprite. It builds each layer from shape functions and a seeded random generator, and draws day and night from the same layout with different palettes. To regenerate, set the global `SCENE_OUT_DIR` to the `Backgrounds` folder and run the script. To add a scene, add a scene function to the script and raise `SCENE_COUNT`.
 

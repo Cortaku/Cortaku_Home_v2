@@ -278,6 +278,8 @@ kbd {
   transition: transform 0.5s ease-out;
 }
 .scene-layer:first-child { background-size: 100% 100%; }
+/* Hero sets background-position-x so the sun lands at the same fraction of the screen as of its tile. */
+.scene-sun { background-repeat: no-repeat; }
 
 /* One tile of art is 16:9 at full height; slide exactly one tile and loop. */
 .scene-layer.is-moving {

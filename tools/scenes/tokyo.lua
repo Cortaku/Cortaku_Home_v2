@@ -3,7 +3,8 @@
 -- Run inside Aseprite (File > Scripts, or `aseprite -b --script`) after setting
 -- the global SCENE_OUT_DIR to public/game-assets/Backgrounds. Each set is five
 -- 576x324 layers for day and for night: layer 1 is the sky, layers 2-5 are
--- transparent and tile horizontally.
+-- transparent and tile horizontally. sun.png holds the sun (or the moon at
+-- night) and is drawn once, never tiled.
 --
 -- Everything is drawn from code with a seeded random generator, so a rerun
 -- reproduces the same art and a tweak to a palette or a shape is one edit.
@@ -283,12 +284,35 @@ local function torii(img, cx, base, s, c)
   rect(img, cx - hw - math.floor(2 * s), base - h + math.floor(5 * s), 2 * hw + math.floor(4 * s), t, c)
 end
 
+-- A cherry tree centred on x: a trunk flaring at the root, two boughs reaching up into the crown, and a crown
+-- built around the trunk top. Lobes come in mirrored pairs (with a little jitter) and the middle lobe overlaps
+-- the trunk, so the blossom never floats or leans off its trunk.
 local function blossomTree(img, x, base, s, trunk, leaf, light)
-  rect(img, x - 1, base - 21 * s, 2 + s, 21 * s, trunk)
-  rect(img, x - 1 - 2 * s, base - 19 * s, 2 * s, 1, trunk)
-  rect(img, x + 1 + s, base - 17 * s, 2 * s, 1, trunk)
-  for _ = 1, 7 do disc(img, x + ri(-8, 8) * s, base - 23 * s - ri(0, 7) * s, 4 * s + ri(0, 2), leaf) end
-  for _ = 1, 5 do disc(img, x + ri(-7, 7) * s, base - 26 * s - ri(0, 5) * s, 1.5 * s, light) end
+  local top = base - 21 * s
+  rect(img, x - 1, top, 3, base - top, trunk)
+  rect(img, x - 2, base - 3, 5, 3, trunk)
+  rect(img, x - 3, base - 1, 7, 1, trunk)
+  -- Boughs: a diagonal each way from the upper trunk, ending inside the side lobes.
+  for i = 0, 3 * s do
+    local y = top + 4 * s - math.floor(i * 0.7)
+    rect(img, x - 1 - i, y, 1, 2, trunk)
+    rect(img, x + 1 + i, y - s, 1, 2, trunk)
+  end
+  local cy = top - 3 * s
+  disc(img, x, cy, 6 * s, leaf)
+  for _ = 1, 2 do
+    local dx, dy = ri(6, 9) * s, ri(-1, 2) * s
+    disc(img, x - dx, cy + dy + ri(-1, 1), 4 * s + ri(0, 2), leaf)
+    disc(img, x + dx, cy + dy + ri(-1, 1), 4 * s + ri(0, 2), leaf)
+  end
+  local ux = ri(2, 4) * s
+  disc(img, x - ux, cy - 5 * s, 4 * s, leaf)
+  disc(img, x + ux, cy - 5 * s - ri(0, 1) * s, 4 * s, leaf)
+  for _ = 1, 3 do
+    local dx, dy = ri(2, 7) * s, ri(-6, 1) * s
+    disc(img, x - dx, cy + dy, 1.5 * s, light)
+    disc(img, x + ri(2, 7) * s, cy + ri(-6, 1) * s, 1.5 * s, light)
+  end
 end
 
 local function pine(img, x, base, h, c)
@@ -348,8 +372,9 @@ local function train(img, x, y, cars, body, stripe, win)
 end
 
 -- ---------- Palettes ----------
--- The sun and moon sit on layer 2 rather than the sky, because the homepage stretches the sky layer to fit.
--- sky top and bottom, then silhouette colours from the farthest layer (2) to the nearest (5).
+-- The sun and moon get an image of their own (sun.png), drawn once between the sky and layer 2: the sky is
+-- stretched to fit and layer 2 tiles, so either would warp the sun or repeat it on a wide screen.
+-- Palettes are sky top and bottom, then silhouette colours from the farthest layer (2) to the nearest (5).
 
 local function palette(time, day, night)
   return time == 'day' and day or night
@@ -371,7 +396,8 @@ local function sceneFuji(time)
 
   srand(902)
   out[2] = layer()
-  if night then moon(out[2], 452, 62, 15) else sun(out[2], 452, 70, 17, '#fff6d8', '#fff0c0') end
+  out.sun = layer()
+  if night then moon(out.sun, 452, 62, 15) else sun(out.sun, 452, 70, 17, '#fff6d8', '#fff0c0') end
   fuji(out[2], 210, 74, 236, 176, hex(p[3]), night and hex('#c9cdf0') or hex('#ffffff'))
   hills(out[2], 232, 8, mix(p[3], p[4], 0.4), 0.6, 2, 5)
 
@@ -424,7 +450,8 @@ local function sceneNeon(time)
 
   srand(1002)
   out[2] = layer()
-  if night then moon(out[2], 280, 54, 12) else sun(out[2], 280, 60, 14, '#fffbe8', '#ffe9c4') end
+  out.sun = layer()
+  if night then moon(out.sun, 280, 54, 12) else sun(out.sun, 280, 60, 14, '#fffbe8', '#ffe9c4') end
   skyline(out[2], 120, 190, 14, 30, H, hex(p[3]), windows(3), litChance * 0.5)
   skytree(out[2], 150, 232, 168, hex(p[3]), night and hex('#9ad8ff') or mix(p[3], '#ffffff', 0.4))
   tokyoTower(out[2], 408, 232, 150,
@@ -488,7 +515,8 @@ local function sceneRail(time)
 
   srand(1102)
   out[2] = layer()
-  if night then moon(out[2], 300, 58, 13) else sun(out[2], 300, 190, 26, '#fff1c9', '#ffd49a') end
+  out.sun = layer()
+  if night then moon(out.sun, 300, 58, 13) else sun(out.sun, 300, 190, 26, '#fff1c9', '#ffd49a') end
   hills(out[2], 196, 26, hex(p[3]), 0.4, 1, 3)
   hills(out[2], 214, 14, mix(p[3], p[4], 0.5), 2.6, 2, 5)
 
@@ -611,7 +639,8 @@ local function sceneBamboo(time)
   -- Far: a pale wall of thin stalks in the mist, with the sun or moon behind them.
   srand(1202)
   out[2] = layer()
-  if night then moon(out[2], 404, 96, 14) else sun(out[2], 404, 100, 20, '#fffde8', '#fbf6c8') end
+  out.sun = layer()
+  if night then moon(out.sun, 404, 96, 14) else sun(out.sun, 404, 100, 20, '#fffde8', '#fbf6c8') end
   canopy(out[2], 46, 10, hex(p[3]), 0.8, 2, 5)
   grove(out[2], H, 13, 4, 2, 1, 50, hex(p[3]), joint(3), hex(p[3]))
   hills(out[2], 236, 6, hex(p[3]), 1.3, 2, 5)
@@ -666,6 +695,8 @@ for set, build in pairs(SCENES) do
       img:saveAs(OUT .. '/' .. set .. '/' .. time .. '/' .. i .. '.png')
       written = written + 1
     end
+    layers.sun:saveAs(OUT .. '/' .. set .. '/' .. time .. '/sun.png')
+    written = written + 1
   end
 end
 print('wrote ' .. written .. ' layers to ' .. OUT)
