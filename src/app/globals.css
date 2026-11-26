@@ -259,20 +259,22 @@ kbd {
 }
 
 /*
- * Day and night cross-fade, then the faded-out stack goes hidden (visibility flips after the 0.8s fade) so the
- * browser stops painting it. Both stacks at once are too much graphics memory for a phone, which then drops
- * parts of the page and flashes as it redraws them.
+ * Switching day and night: the new stack fades in on top while the old one stays fully opaque underneath, then
+ * the old one goes hidden (after the 0.8s fade) so the browser stops painting it. Both stacks at once are too
+ * much graphics memory for a phone, which then drops parts of the page and flashes as it redraws them. Fading
+ * only the top stack means any of it the phone hasn't drawn yet shows the old scene, not a flash of sky.
  */
 .scene-stack {
   position: absolute;
   inset: 0;
+  z-index: 0;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.8s ease, visibility 0s 0.8s;
+  transition: opacity 0s 0.8s, visibility 0s 0.8s;
 }
 .scene-day,
-.dark .scene-night { opacity: 1; visibility: visible; transition: opacity 0.8s ease, visibility 0s; }
-.dark .scene-day { opacity: 0; visibility: hidden; transition: opacity 0.8s ease, visibility 0s 0.8s; }
+.dark .scene-night { z-index: 1; opacity: 1; visibility: visible; transition: opacity 0.8s ease, visibility 0s; }
+.dark .scene-day { z-index: 0; opacity: 0; visibility: hidden; transition: opacity 0s 0.8s, visibility 0s 0.8s; }
 
 .scene-layer {
   position: absolute;
@@ -328,6 +330,7 @@ kbd {
   --road-speck: var(--road-speck-day, #838aac);
   position: absolute;
   inset: 77.8% 0 auto 0;
+  z-index: 2; /* above both day/night stacks (z-index 0 and 1) */
   height: calc(var(--u) * 28);
   background:
     repeating-linear-gradient(90deg,

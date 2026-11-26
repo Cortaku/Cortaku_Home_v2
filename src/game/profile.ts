@@ -77,13 +77,13 @@ export function dailyBestToday(profile: Profile): number {
   return profile.dailyDate === todayKey() ? profile.dailyBest : 0;
 }
 
-/** True when the run beat the player's best for that mode. */
-export function recordRun(mode: 'endless' | 'daily', score: number): boolean {
+/** True when the run beat the player's best for that mode. `day` is the daily run's date. */
+export function recordRun(mode: 'endless' | 'daily', score: number, day = todayKey()): boolean {
   const profile = read();
-  const previous = mode === 'daily' ? dailyBestToday(profile) : profile.best;
+  const previous = mode === 'daily' ? (profile.dailyDate === day ? profile.dailyBest : 0) : profile.best;
   if (score <= previous) return false;
   const bestEver = Math.max(profile.bestEver, score);
-  if (mode === 'daily') updateProfile({ dailyDate: todayKey(), dailyBest: score, bestEver });
+  if (mode === 'daily') updateProfile({ dailyDate: day, dailyBest: score, bestEver });
   else updateProfile({ best: score, bestEver });
   return true;
 }

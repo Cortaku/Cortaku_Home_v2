@@ -104,10 +104,42 @@ function parseSubmission(body: unknown): Submission | null {
   return { token: b.token, name, score: b.score!, date, inputs: b.inputs };
 }
 
+const TOO_LARGE = Symbol('too large');
+
+/**
+ * The body as JSON (null if it isn't), counting bytes as they arrive: a chunked request has no
+ * Content-Length, so the header alone can't hold it to MAX_BODY_BYTES.
+ */
+async function readJson(request: Request): Promise<unknown> {
+  if (Number(request.headers.get('Content-Length') ?? 0) > MAX_BODY_BYTES) return TOO_LARGE;
+  const reader = request.body?.getReader();
+  if (!reader) return null;
+  const decoder = new TextDecoder();
+  let size = 0;
+  let text = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return TOO_LARGE;
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+  text += decoder.decode();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 /** Replays the run; posts the replayed score only if it matches and the run took as long as it claims. */
 async function postScore(request: Request, secret: string): Promise<Response> {
-  if (Number(request.headers.get('Content-Length') ?? 0) > MAX_BODY_BYTES) return json({ error: 'invalid' }, 413);
-  const submission = parseSubmission(await request.json().catch(() => null));
+  const body = await readJson(request);
+  if (body === TOO_LARGE) return json({ error: 'invalid' }, 413);
+  const submission = parseSubmission(body);
   if (!submission) return json({ error: 'invalid' }, 400);
 
   const ticket = await readTicket(secret, submission.token);

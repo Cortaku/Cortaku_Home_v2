@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { Point } from './ArcadeProvider';
 import { reducedMotion } from '@/lib/motion';
 import { unlockSecret } from '@/game/profile';
@@ -26,6 +26,9 @@ export default function MoonRabbit({ from, onDone }: { from: Point; onDone: () =
   /** Starts the countdown to vanishing; set by the effect, which owns the timers. */
   const finishRef = useRef<() => void>(() => {});
   const [caught, setCaught] = useState<'new' | 'again' | null>(null);
+  // The lantern re-renders on every pull (each one switches the theme) and hands over a new onDone each time.
+  // Read it as an event so that doesn't restart the effect, which would send the rabbit back to the lantern.
+  const done = useEffectEvent(() => onDone());
 
   useEffect(() => {
     const el = ref.current;
@@ -56,12 +59,12 @@ export default function MoonRabbit({ from, onDone }: { from: Point; onDone: () =
     let timer: ReturnType<typeof setTimeout> | undefined;
     finishRef.current = () => {
       clearTimeout(timer);
-      timer = setTimeout(onDone, CAUGHT_MS);
+      timer = setTimeout(() => done(), CAUGHT_MS);
     };
 
     if (reducedMotion()) {
       place(x1, y1, false);
-      timer = setTimeout(() => { if (!caughtRef.current) onDone(); }, 4000);
+      timer = setTimeout(() => { if (!caughtRef.current) done(); }, 4000);
     } else {
       const start = performance.now();
       const step = (now: number) => {
@@ -76,7 +79,7 @@ export default function MoonRabbit({ from, onDone }: { from: Point; onDone: () =
         } else {
           const k = t - LEAP_MS - LAND_MS;
           x = x1 - Math.floor(k / HOP_MS) * hopW;
-          if (x + w < 0) return onDone();
+          if (x + w < 0) return done();
           const u = k % HOP_MS;
           if (u < CROUCH_MS) {
             place(x, y1, false);
@@ -94,7 +97,7 @@ export default function MoonRabbit({ from, onDone }: { from: Point; onDone: () =
       cancelAnimationFrame(raf);
       clearTimeout(timer);
     };
-  }, [from, onDone]);
+  }, [from]);
 
   const catchIt = () => {
     if (caughtRef.current) return;

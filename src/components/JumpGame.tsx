@@ -25,6 +25,8 @@ type Props = {
 type Result = {
   score: number;
   zone: number;
+  /** UTC date the run started; a daily run is that day's course. */
+  day: string;
   isBest: boolean;
   unlocked: string[];
   /** What the Worker needs to verify the run; null if it started without a ticket (offline). */
@@ -41,6 +43,8 @@ const SAVE_ERRORS: Record<Exclude<SubmitResult, 'saved'>, string> = {
 
 /** Presses just after dying are ignored, so mashing jump doesn't skip the result. */
 const RETRY_LOCK_MS = 500;
+/** Longest a start waits for a run ticket before playing without one (offline). */
+const TICKET_WAIT_MS = 3000;
 const JUMP_KEYS = new Set(['Space', 'ArrowUp', 'KeyW']);
 
 function isFormControl(target: EventTarget | null): boolean {
@@ -49,17 +53,24 @@ function isFormControl(target: EventTarget | null): boolean {
 }
 
 export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props) {
+  // The game keeps the theme and scene it opened with: rebuilding the engine mid-run (say the phone switches
+  // to dark mode) would throw the run away and leave the panels out of step with it.
+  const [baseTime] = useState(gameTheme);
+  const [baseSet] = useState(backgroundSet);
   const profile = useProfile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scoreRef = useRef<HTMLSpanElement>(null);
   const engineRef = useRef<Engine | null>(null);
   const audioRef = useRef<GameAudio | null>(null);
   const overAtRef = useRef(0);
-  /** A ticket fetched ahead of time, so starting a run never waits on the network. */
+  /** A ticket fetched ahead of time, so starting a run usually doesn't wait on the network. */
   const nextTicketRef = useRef<RunTicket | null>(null);
+  /** The ticket request in flight, so a start can wait for it rather than play unpostable. */
+  const ticketRequestRef = useRef<Promise<RunTicket | null> | null>(null);
   const runTicketRef = useRef<RunTicket | null>(null);
+  const runDayRef = useRef('');
+  const startingRef = useRef(false);
 
-  const [today] = useState(todayKey);
   const [phase, setPhase] = useState<Phase>('idle');
   const [mode, setMode] = useState<Mode>('endless');
   const [result, setResult] = useState<Result | null>(null);
@@ -79,7 +90,8 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
     const engine = engineRef.current;
     const score = engine?.score ?? 0;
     const before = getProfile().bestEver;
-    const isBest = recordRun(mode, score);
+    const day = runDayRef.current || todayKey();
+    const isBest = recordRun(mode, score, day);
     const unlocked = SKINS.filter((s) => s.unlockAt > before && s.unlockAt <= score).map((s) => s.name);
     const ticket = runTicketRef.current;
     overAtRef.current = performance.now();
@@ -88,6 +100,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
     setResult({
       score,
       zone: engine?.sim.zone ?? 0,
+      day,
       isBest,
       unlocked,
       run: ticket && engine ? { ticket, inputs: engine.recording } : null,
@@ -123,7 +136,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
         onScore: (score) => handleScore(score),
         onSound: (sound) => handleSound(sound),
       },
-      { baseSet: backgroundSet, baseTime: gameTheme, debug: window.location.search.includes('hitbox') },
+      { baseSet, baseTime, debug: window.location.search.includes('hitbox') },
     );
     engineRef.current = engine;
     audioRef.current = audio;
@@ -138,7 +151,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
       engineRef.current = null;
       audioRef.current = null;
     };
-  }, [backgroundSet, gameTheme]);
+  }, [baseSet, baseTime]);
 
   useEffect(() => {
     let cancelled = false;
@@ -146,13 +159,35 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
       .then((sheet) => { if (!cancelled) engineRef.current?.setSheet(sheet); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [profile.skin, backgroundSet, gameTheme]);
+  }, [profile.skin, baseSet, baseTime]);
 
   const fetchTicket = () => {
-    requestRun().then((ticket) => { nextTicketRef.current = ticket; });
+    const request = requestRun();
+    ticketRequestRef.current = request;
+    request.then((ticket) => {
+      if (ticketRequestRef.current !== request) return;
+      ticketRequestRef.current = null;
+      nextTicketRef.current = ticket;
+    });
   };
 
   useEffect(fetchTicket, []);
+
+  /** The ticket for the next run: the one on hand, else the one on its way (waiting up to TICKET_WAIT_MS). */
+  const takeTicket = async (): Promise<RunTicket | null> => {
+    if (!nextTicketRef.current) {
+      if (!ticketRequestRef.current) fetchTicket();
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), TICKET_WAIT_MS));
+      const ticket = await Promise.race([ticketRequestRef.current, timeout]);
+      if (ticket && nextTicketRef.current === ticket) nextTicketRef.current = null;
+      fetchTicket();
+      return ticket;
+    }
+    const ticket = nextTicketRef.current;
+    nextTicketRef.current = null;
+    fetchTicket();
+    return ticket;
+  };
 
   // Stop the page behind from scrolling.
   useEffect(() => {
@@ -162,22 +197,26 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
     return () => { [html.style.overflow, body.style.overflow] = previous; };
   }, []);
 
-  const begin = (nextMode: Mode) => {
-    const engine = engineRef.current;
+  const begin = async (nextMode: Mode) => {
     const audio = audioRef.current;
-    if (!engine || !audio) return;
+    if (!engineRef.current || !audio || startingRef.current) return;
+    // Sound must unlock inside the tap, before any waiting.
     audio.unlock();
     audio.setMusic(true);
+    startingRef.current = true;
+    const ticket = await takeTicket();
+    startingRef.current = false;
+    const engine = engineRef.current;
+    if (!engine) return;
     setMode(nextMode);
     setResult(null);
     setModal(null);
-    const ticket = nextTicketRef.current;
     runTicketRef.current = ticket;
-    nextTicketRef.current = null;
-    fetchTicket();
+    const day = todayKey();
+    runDayRef.current = day;
     // Without a ticket (offline) the run still plays, it just can't be posted.
     const endlessSeed = ticket?.seed ?? (Math.random() * 2 ** 32) >>> 0;
-    engine.start(nextMode === 'daily' ? dailySeed(today) : endlessSeed);
+    engine.start(nextMode === 'daily' ? dailySeed(day) : endlessSeed);
   };
 
   const resume = () => {
@@ -221,7 +260,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
       return;
     }
     setSaving(true);
-    const outcome = await submitScore(result.run, trimmed, result.score, mode === 'daily' ? today : undefined);
+    const outcome = await submitScore(result.run, trimmed, result.score, mode === 'daily' ? result.day : undefined);
     setSaving(false);
     if (outcome === 'saved') {
       setSaveError('');
@@ -233,7 +272,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
 
   const share = async () => {
     if (!result) return;
-    const how = await shareRun({ mode, date: today, score: result.score, zone: result.zone });
+    const how = await shareRun({ mode, date: result.day, score: result.score, zone: result.zone });
     if (how === 'copied') setShared(true);
   };
 

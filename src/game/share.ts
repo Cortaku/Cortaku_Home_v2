@@ -19,14 +19,15 @@ export function shareText({ mode, date, score, zone }: SharedRun): string {
 }
 
 /** The share sheet on phones, the clipboard elsewhere. */
-export async function shareRun(run: SharedRun): Promise<'shared' | 'copied' | 'failed'> {
+export async function shareRun(run: SharedRun): Promise<'shared' | 'copied' | 'cancelled' | 'failed'> {
   const text = shareText(run);
   if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
     try {
       await navigator.share({ text });
       return 'shared';
-    } catch {
-      // Dismissed, or not allowed here: fall back to copying.
+    } catch (error) {
+      // The player closed the sheet: leave their clipboard alone. Otherwise (not allowed here) copy instead.
+      if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled';
     }
   }
   try {
