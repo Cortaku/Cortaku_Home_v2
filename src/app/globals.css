@@ -258,11 +258,18 @@ kbd {
   view-transition-name: arcade;
 }
 
+/* The hero's moving scene: one canvas drawn by src/game/backdrop.ts. */
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
 /*
- * Switching day and night: the new stack fades in on top while the old one stays fully opaque underneath, then
- * the old one goes hidden (after the 0.8s fade) so the browser stops painting it. Both stacks at once are too
- * much graphics memory for a phone, which then drops parts of the page and flashes as it redraws them. Fading
- * only the top stack means any of it the phone hasn't drawn yet shows the old scene, not a flash of sky.
+ * The 404 page's still scene: day and night stacks of layers. The new stack fades in on top while the old one
+ * stays opaque underneath, then the old one is hidden so the browser stops painting it.
  */
 .scene-stack {
   position: absolute;
@@ -282,43 +289,10 @@ kbd {
   background-repeat: repeat-x;
   background-size: auto 100%;
   image-rendering: pixelated;
-  transform: translateX(calc(var(--lean, 0) * var(--depth) * 1px));
-  transition: transform 0.5s ease-out;
 }
 .scene-layer:first-child { background-size: 100% 100%; }
-/* Hero sets background-position-x so the sun lands at the same fraction of the screen as of its tile. */
+/* The 404 page sets background-position-x so the sun lands at the same fraction of the screen as of its tile. */
 .scene-sun { background-repeat: no-repeat; }
-
-/*
- * One copy of a layer's landmarks, moving at the layer's speed (one tile per --seconds) from off the right edge
- * to just off the left, then starting over. A pass is --mark-n whole tiles (Hero: enough to clear the box,
- * plus one), so the landmark always comes back on the layer's tile grid and stays on its own patch of hill.
- * The negative delay starts with the tile at the left edge, where the layer itself starts; reduced motion
- * leaves it there. The box is one tile wide and slides (translate) rather than moving its background, so the
- * graphics chip moves it without repainting it every frame.
- */
-.scene-landmark {
-  --tile: calc(var(--scene-h) * 16 / 9);
-  right: auto;
-  width: var(--tile);
-  background-repeat: no-repeat;
-  animation: landmark-drift linear infinite;
-  animation-duration: calc(var(--seconds) * var(--mark-n, 2) * 1s);
-  animation-delay: calc(var(--seconds) * (var(--mark-n, 2) - 1) * -1s);
-}
-@keyframes landmark-drift {
-  from { translate: calc(var(--tile) * (var(--mark-n, 2) - 1)) 0; }
-  to { translate: calc(var(--tile) * -1) 0; }
-}
-
-/* One tile of art is 16:9 at full height; slide exactly one tile and loop. */
-.scene-layer.is-moving {
-  right: calc(var(--scene-h) * -16 / 9 - 2rem);
-  animation: scene-drift linear infinite;
-}
-@keyframes scene-drift {
-  to { translate: calc(var(--scene-h) * -16 / 9) 0; }
-}
 
 /* Same road as the game (src/game/road.ts); Hero sets the --road-*-day/night colours from the scene. */
 .scene-ground {
@@ -744,9 +718,8 @@ kbd {
 }
 ::view-transition-group(arcade) { animation-duration: 0.45s; }
 
-html[data-arcade-open] .scene-layer,
+/* The backdrop canvas pauses itself; the road (CSS) pauses with it. */
 html[data-arcade-open] .scene-ground,
-.scene.is-offscreen .scene-layer,
 .scene.is-offscreen .scene-ground { animation-play-state: paused; }
 
 /* ---------- Easter egg ---------- */
@@ -776,9 +749,9 @@ html[data-arcade-open] .scene-ground,
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .scene-layer, .scene-ground, .party, .status, .mascot-sprite, .mascot-bubble, .lantern-tassel, .lantern-cord, .launcher-zzz span { animation: none !important; }
+  .scene-ground, .party, .status, .mascot-sprite, .mascot-bubble, .lantern-tassel, .lantern-cord, .launcher-zzz span { animation: none !important; }
   .lantern-string { transition: none; }
-  .scene-layer { transition: none; }
+  .scene-stack { transition: none; }
 }
 
 /* ---------- Shared arcade bits ---------- */
