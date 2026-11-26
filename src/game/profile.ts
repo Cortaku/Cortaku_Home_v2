@@ -72,15 +72,15 @@ export function unlockSecret(id: string): boolean {
   return true;
 }
 
-/** 0 if the stored daily best is from another day. */
-export function dailyBestToday(profile: Profile): number {
-  return profile.dailyDate === todayKey() ? profile.dailyBest : 0;
+/** The daily best for `day` (today by default); 0 if the stored one is from another day. */
+export function dailyBestOn(profile: Profile, day = todayKey()): number {
+  return profile.dailyDate === day ? profile.dailyBest : 0;
 }
 
 /** True when the run beat the player's best for that mode. `day` is the daily run's date. */
 export function recordRun(mode: 'endless' | 'daily', score: number, day = todayKey()): boolean {
   const profile = read();
-  const previous = mode === 'daily' ? (profile.dailyDate === day ? profile.dailyBest : 0) : profile.best;
+  const previous = mode === 'daily' ? dailyBestOn(profile, day) : profile.best;
   if (score <= previous) return false;
   const bestEver = Math.max(profile.bestEver, score);
   if (mode === 'daily') updateProfile({ dailyDate: day, dailyBest: score, bestEver });
@@ -88,9 +88,20 @@ export function recordRun(mode: 'endless' | 'daily', score: number, day = todayK
   return true;
 }
 
+/** Another tab saved the profile: drop the cached copy, or the next save here would write the old one back. */
+function onStorage(e: StorageEvent) {
+  if (e.key !== KEY && e.key !== null) return;
+  cached = null;
+  listeners.forEach((listener) => listener());
+}
+
 function subscribe(listener: () => void) {
+  if (listeners.size === 0) window.addEventListener('storage', onStorage);
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) window.removeEventListener('storage', onStorage);
+  };
 }
 
 export function useProfile(): Profile {

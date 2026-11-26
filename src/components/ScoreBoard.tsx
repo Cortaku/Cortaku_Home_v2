@@ -14,13 +14,17 @@ type Props = {
   initialTab?: Tab;
   /** Pass all-time scores if already loaded; otherwise the board fetches them. */
   allTime?: Result;
+  /** The daily run's date to show; today's by default. The game passes its run's, which may be yesterday's. */
+  day?: string;
   children?: React.ReactNode;
 };
 
 /** All-time and today's daily scores, on two tabs. */
-export default function ScoreBoard({ initialTab = 'all', allTime, children }: Props) {
+export default function ScoreBoard({ initialTab = 'all', allTime, day, children }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [today] = useState(todayKey);
+  const [today] = useState(() => day ?? todayKey());
+  /** False when showing an earlier day's run (a daily run that crossed midnight). */
+  const [isToday] = useState(() => today === todayKey());
   const [fetched, setFetched] = useState<Partial<Record<Tab, Score[] | null>>>({});
 
   const provided = tab === 'all' && allTime !== undefined;
@@ -39,7 +43,7 @@ export default function ScoreBoard({ initialTab = 'all', allTime, children }: Pr
     <div className="board">
       <div className="board-tabs" role="tablist" aria-label="Leaderboard">
         <button type="button" role="tab" aria-selected={tab === 'all'} onClick={() => setTab('all')}>All-time</button>
-        <button type="button" role="tab" aria-selected={tab === 'daily'} onClick={() => setTab('daily')}>Today&rsquo;s daily</button>
+        <button type="button" role="tab" aria-selected={tab === 'daily'} onClick={() => setTab('daily')}>{isToday ? 'Today’s daily' : 'Yesterday’s daily'}</button>
       </div>
 
       <div className="board-head">
@@ -51,7 +55,7 @@ export default function ScoreBoard({ initialTab = 'all', allTime, children }: Pr
       {result === undefined && <p className="board-note">Loading scores…</p>}
       {result === null && <p className="board-note">The scoreboard is offline right now. The game still works.</p>}
       {result && result.length === 0 && (
-        <p className="board-note">{tab === 'daily' ? 'Nobody has posted a daily run yet today.' : 'No scores yet. Be the first.'}</p>
+        <p className="board-note">{tab === 'daily' ? isToday ? 'Nobody has posted a daily run yet today.' : 'Nobody posted yesterday’s daily run.' : 'No scores yet. Be the first.'}</p>
       )}
       {result && result.length > 0 && (
         <ol className="board-list">

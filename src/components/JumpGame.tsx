@@ -8,8 +8,9 @@ import { VIEW_H, VIEW_W } from '@/game/sim';
 import { dailySeed } from '@/game/replay';
 import { shareRun } from '@/game/share';
 import { SKINS, loadSkinSheet } from '@/game/skins';
-import { dailyBestToday, getProfile, recordRun, todayKey, updateProfile, useProfile } from '@/game/profile';
+import { dailyBestOn, getProfile, recordRun, todayKey, updateProfile, useProfile } from '@/game/profile';
 import { requestRun, submitScore, type RunTicket, type SubmitResult } from '@/lib/scores';
+import { watchPixelRatio } from '@/lib/pixel-ratio';
 import ScoreBoard from './ScoreBoard';
 import SkinPicker from './SkinPicker';
 
@@ -45,6 +46,8 @@ const SAVE_ERRORS: Record<Exclude<SubmitResult, 'saved'>, string> = {
 const RETRY_LOCK_MS = 500;
 /** Longest a start waits for a run ticket before playing without one (offline). */
 const TICKET_WAIT_MS = 3000;
+/** A ticket fetched ahead is dropped after this; the Worker refuses them at 12 hours. */
+const TICKET_KEEP_MS = 6 * 60 * 60 * 1000;
 const JUMP_KEYS = new Set(['Space', 'ArrowUp', 'KeyW']);
 
 function isFormControl(target: EventTarget | null): boolean {
@@ -65,11 +68,14 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
   const overAtRef = useRef(0);
   /** A ticket fetched ahead of time, so starting a run usually doesn't wait on the network. */
   const nextTicketRef = useRef<RunTicket | null>(null);
+  /** When nextTicketRef arrived, so a tab left open for hours doesn't start a run on an expired ticket. */
+  const nextTicketAtRef = useRef(0);
   /** The ticket request in flight, so a start can wait for it rather than play unpostable. */
   const ticketRequestRef = useRef<Promise<RunTicket | null> | null>(null);
   const runTicketRef = useRef<RunTicket | null>(null);
   const runDayRef = useRef('');
-  const startingRef = useRef(false);
+  /** Bumped by every start, and by anything that cancels one (menu, exit), so a start that waited can tell. */
+  const startTokenRef = useRef(0);
 
   const [phase, setPhase] = useState<Phase>('idle');
   const [mode, setMode] = useState<Mode>('endless');
@@ -79,8 +85,11 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [shared, setShared] = useState(false);
+  const [starting, setStarting] = useState(false);
+  /** UTC date of the current or last run, so a daily run that crosses midnight keeps its own day. */
+  const [runDay, setRunDay] = useState(todayKey);
 
-  const best = mode === 'daily' ? dailyBestToday(profile) : profile.best;
+  const best = mode === 'daily' ? dailyBestOn(profile, runDay) : profile.best;
 
   const handlePhase = useEffectEvent((next: Phase) => {
     setPhase(next);
@@ -144,8 +153,12 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
     const observer = new ResizeObserver(() => engine.resize(canvas.clientWidth, canvas.clientHeight));
     observer.observe(canvas);
     engine.resize(canvas.clientWidth, canvas.clientHeight);
+    // A move to a screen with another pixel density doesn't resize the canvas, so watch for it too.
+    const stopWatching = watchPixelRatio(() => engine.resize(canvas.clientWidth, canvas.clientHeight));
     return () => {
+      startTokenRef.current += 1;
       observer.disconnect();
+      stopWatching();
       engine.destroy();
       audio.dispose();
       engineRef.current = null;
@@ -168,6 +181,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
       if (ticketRequestRef.current !== request) return;
       ticketRequestRef.current = null;
       nextTicketRef.current = ticket;
+      nextTicketAtRef.current = Date.now();
     });
   };
 
@@ -175,6 +189,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
 
   /** The ticket for the next run: the one on hand, else the one on its way (waiting up to TICKET_WAIT_MS). */
   const takeTicket = async (): Promise<RunTicket | null> => {
+    if (nextTicketRef.current && Date.now() - nextTicketAtRef.current > TICKET_KEEP_MS) nextTicketRef.current = null;
     if (!nextTicketRef.current) {
       if (!ticketRequestRef.current) fetchTicket();
       const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), TICKET_WAIT_MS));
@@ -199,13 +214,16 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
 
   const begin = async (nextMode: Mode) => {
     const audio = audioRef.current;
-    if (!engineRef.current || !audio || startingRef.current) return;
+    if (!engineRef.current || !audio || starting) return;
     // Sound must unlock inside the tap, before any waiting.
     audio.unlock();
     audio.setMusic(true);
-    startingRef.current = true;
+    const token = ++startTokenRef.current;
+    setStarting(true);
     const ticket = await takeTicket();
-    startingRef.current = false;
+    // Menu, exit or another start while waiting: this one no longer applies.
+    if (token !== startTokenRef.current) return;
+    setStarting(false);
     const engine = engineRef.current;
     if (!engine) return;
     setMode(nextMode);
@@ -214,6 +232,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
     runTicketRef.current = ticket;
     const day = todayKey();
     runDayRef.current = day;
+    setRunDay(day);
     // Without a ticket (offline) the run still plays, it just can't be posted.
     const endlessSeed = ticket?.seed ?? (Math.random() * 2 ** 32) >>> 0;
     engine.start(nextMode === 'daily' ? dailySeed(day) : endlessSeed);
@@ -225,6 +244,10 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
   };
 
   const backToMenu = () => {
+    // Cancels a start still waiting on its ticket.
+    startTokenRef.current += 1;
+    setStarting(false);
+    audioRef.current?.setMusic(false);
     setResult(null);
     engineRef.current?.toMenu();
   };
@@ -359,10 +382,10 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
             <div className="game-panel">
               <h2 className="game-title">Ready?</h2>
               <div className="game-actions">
-                <button type="button" className="btn-arcade" onClick={() => begin('endless')}>
+                <button type="button" className="btn-arcade" disabled={starting} onClick={() => begin('endless')}>
                   <Play className="fill-current" aria-hidden="true" /> Endless
                 </button>
-                <button type="button" className="btn-arcade btn-arcade-alt" onClick={() => begin('daily')}>
+                <button type="button" className="btn-arcade btn-arcade-alt" disabled={starting} onClick={() => begin('daily')}>
                   <CalendarDays aria-hidden="true" /> Daily run
                 </button>
               </div>
@@ -402,7 +425,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
                 <p className="game-unlock">Skin unlocked: {result.unlocked.join(', ')}</p>
               )}
               <div className="game-actions">
-                <button type="button" className="btn-arcade" onClick={() => begin(mode)}>
+                <button type="button" className="btn-arcade" disabled={starting} onClick={() => begin(mode)}>
                   <RotateCcw aria-hidden="true" /> Again
                 </button>
                 <button type="button" className="btn-arcade btn-arcade-alt" onClick={backToMenu}>Menu</button>
@@ -457,7 +480,7 @@ export default function JumpGame({ onExit, gameTheme, backgroundSet = 1 }: Props
       {modal === 'board' && (
         <div className="game-modal" onClick={(e) => { if (e.target === e.currentTarget) setModal(null); }}>
           <div className="game-dialog game-dialog-board">
-            <ScoreBoard initialTab={mode === 'daily' ? 'daily' : 'all'}>
+            <ScoreBoard initialTab={mode === 'daily' ? 'daily' : 'all'} day={mode === 'daily' ? runDay : undefined}>
               <button type="button" className="btn-arcade btn-arcade-sm" onClick={() => setModal(null)}>Close</button>
             </ScoreBoard>
           </div>

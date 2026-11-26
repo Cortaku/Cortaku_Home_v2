@@ -7,9 +7,7 @@ import Petals from './Petals';
 import Mascot from './Mascot';
 import FallenLantern from './FallenLantern';
 import { SCENE_COUNT, TAGLINE } from '@/lib/site';
-import { loadImage } from '@/game/assets';
 import { Backdrop } from '@/game/backdrop';
-import { roadPalette, sampleGround } from '@/game/road';
 
 export default function Hero() {
   const { isOpen, openGame, scores, scoreState, scene, nextScene, fallenLantern } = useArcade();
@@ -17,11 +15,17 @@ export default function Hero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const backdropRef = useRef<Backdrop | null>(null);
 
-  // The moving scene is one canvas (see backdrop.ts for why).
+  // The moving scene is one canvas (see backdrop.ts for why). The road is CSS, coloured from each scene's
+  // ground as that scene starts to show.
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const backdrop = new Backdrop(canvas);
+    const el = sceneRef.current;
+    if (!canvas || !el) return;
+    const backdrop = new Backdrop(canvas, (road) => {
+      for (const [time, palette] of Object.entries(road)) {
+        for (const [name, colour] of Object.entries(palette)) el.style.setProperty(`--road-${name}-${time}`, colour);
+      }
+    });
     backdropRef.current = backdrop;
     return () => {
       backdrop.destroy();
@@ -31,23 +35,6 @@ export default function Hero() {
 
   useEffect(() => {
     backdropRef.current?.setScene(scene);
-  }, [scene]);
-
-  // Colour the road from the scene's ground, for both day and night.
-  useEffect(() => {
-    const el = sceneRef.current;
-    let cancelled = false;
-    for (const time of ['day', 'night'] as const) {
-      loadImage(`/game-assets/Backgrounds/${scene}/${time}/5.png`)
-        .then((layer) => {
-          if (cancelled || !el) return;
-          for (const [name, colour] of Object.entries(roadPalette(sampleGround(layer)))) {
-            el.style.setProperty(`--road-${name}-${time}`, colour);
-          }
-        })
-        .catch(() => {});
-    }
-    return () => { cancelled = true; };
   }, [scene]);
 
   const top = scores[0];

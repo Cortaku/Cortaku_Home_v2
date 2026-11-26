@@ -17,6 +17,8 @@ const TICKET_MS = 12 * 60 * 60 * 1000;
 /** Slack for the "no faster than it took to play" check. */
 const CLOCK_SLACK_MS = 3_000;
 const MAX_BODY_BYTES = 512 * 1024;
+/** A daily run with at least this many inputs (about five jumps) is keyed on the run itself; see postScore. */
+const DAILY_KEY_MIN_INPUTS = 10;
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -49,7 +51,7 @@ async function status(request: Request, ctx: Context): Promise<Response> {
 }
 
 // ---------- Run tickets ----------
-// A ticket is `id.seed.issuedAt.signature`. The id makes each run postable once, the seed is the endless
+// A ticket is `id.seed.issuedAt.signature`. The id makes each endless run postable once, the seed is the endless
 // course, and issuedAt lets the Worker refuse a score that arrives faster than the run could be played.
 
 const encoder = new TextEncoder();
@@ -135,6 +137,11 @@ async function readJson(request: Request): Promise<unknown> {
   }
 }
 
+/** SHA-256 of a list of inputs, base64url. */
+async function digest(inputs: readonly number[]): Promise<string> {
+  return toBase64Url(await crypto.subtle.digest('SHA-256', encoder.encode(inputs.join(','))));
+}
+
 /** Replays the run; posts the replayed score only if it matches and the run took as long as it claims. */
 async function postScore(request: Request, secret: string): Promise<Response> {
   const body = await readJson(request);
@@ -151,6 +158,13 @@ async function postScore(request: Request, secret: string): Promise<Response> {
   if (!run || Math.abs(run.score - submission.score) > 1) return json({ error: 'invalid' }, 400);
   if (age < run.seconds * 1000 - CLOCK_SLACK_MS) return json({ error: 'invalid' }, 400);
 
+  // Each row's run_id is unique. An endless run is its ticket. A daily course is the same for everyone and
+  // doesn't depend on the ticket, so there the run itself is the key: the same run can't go up twice under
+  // fresh tickets. Very short runs (no jumps, say) stay on the ticket: two players can easily play the same
+  // one, and it isn't worth copying.
+  const byRun = submission.date !== null && run.played.length >= DAILY_KEY_MIN_INPUTS;
+  const runId = byRun ? `daily:${submission.date}:${await digest(run.played)}` : ticket.id;
+
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/cortaku_post_score`, {
     method: 'POST',
     headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
@@ -159,7 +173,7 @@ async function postScore(request: Request, secret: string): Promise<Response> {
       p_name: submission.name,
       p_score: run.score,
       p_date: submission.date,
-      p_run_id: ticket.id,
+      p_run_id: runId,
       p_ip: request.headers.get('CF-Connecting-IP'),
     }),
   });

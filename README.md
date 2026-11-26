@@ -199,7 +199,7 @@ Scores live in one Supabase table, `cortaku_high_scores`. The browser reads it d
 | `player_name` | text | 1 to 15 characters |
 | `score` | integer | 0 to 1,000,000 |
 | `challenge_date` | date | null for an endless run; the UTC date for a daily run |
-| `run_id` | text, unique | the run ticket it came from, so each run posts once |
+| `run_id` | text, unique | an endless run's ticket id; for a daily run, a hash of its inputs (`daily:<date>:<hash>`), or the ticket id if it is very short. Either way each run posts once |
 | `ip_address` | text | set by trigger; not readable by clients |
 | `created_at` | timestamptz | set by trigger |
 
@@ -216,11 +216,11 @@ All enforced in the database (`supabase/migrations/`):
 
 The rules are deterministic (4.1), so a run is fully described by its seed and its inputs.
 
-1. When the game opens it asks `/api/run` for a ticket: a random id, the endless seed and the time, signed with HMAC-SHA256. A spare ticket is always fetched ahead, so starting a run never waits on the network.
+1. When the game opens it asks `/api/run` for a ticket: a random id, the endless seed and the time, signed with HMAC-SHA256. A spare ticket is always fetched ahead (and dropped after 6 hours, well before the Worker's 12-hour limit), so starting a run rarely waits on the network; when it must, it waits up to 3 seconds and then plays without one.
 2. The engine records every press and release by simulation tick (`replay.ts`).
-3. To post, the browser sends the ticket, the inputs, the name and the score to `/api/score`. The Worker checks the signature and the ticket's age, replays the inputs through the same `Sim` (the daily seed comes from the date), and requires the replay to die with the claimed score. It also refuses a run that arrives faster than it took to play. Only then does it post the replayed score.
+3. To post, the browser sends the ticket, the inputs, the name and the score to `/api/score`. The Worker checks the signature and the ticket's age, replays the inputs through the same `Sim` (the daily seed comes from the date), and requires the replay to die with the claimed score. It also refuses a run that arrives faster than it took to play. Only then does it post the replayed score. The daily course is the same for everyone, so a daily run of ten or more inputs is keyed on the run itself, not its ticket: the same run can't be posted twice under fresh tickets.
 
-This stops edited scores, forged requests and instant scripted runs. A bot that plays in real time could still get through; stopping that would need the server to run the game live. A run started offline (no ticket) still plays, but can't be posted. Replaying 25 minutes of play takes about 17 ms; typical runs take 1 to 2 ms.
+This stops edited scores, forged requests and instant scripted runs. A bot that plays in real time could still get through; stopping that would need the server to run the game live. A run started offline (no ticket) still plays, but can't be posted. Replaying 25 minutes of play takes about 15 ms; typical runs take 1 to 2 ms. On the Workers free plan (10 ms of CPU per request) runs longer than about 20 minutes may fail to post.
 
 ### 5.5 Keep-alive
 

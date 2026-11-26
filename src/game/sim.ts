@@ -213,14 +213,15 @@ export class Sim {
     this.speed = speedAt(this.time);
     this.prevDist = this.dist;
     this.dist += this.speed * dt;
-    this.score += dt * SCORE_RATE * Math.pow(this.speed / SPEED_START, 1.5);
+    const ratio = this.speed / SPEED_START;
+    this.score += dt * SCORE_RATE * ratio * Math.sqrt(ratio); // ratio ** 1.5, cheaper
 
     this.stepRobot(dt);
     this.stepObstacles();
 
-    const zone = zoneForScore(this.score);
-    if (zone !== this.zone) {
-      this.zone = zone;
+    // The score only grows, so check the next zone rather than counting up from 0 every step.
+    if (zoneStart(this.zone + 1) <= this.score) {
+      this.zone = zoneForScore(this.score);
       this.events.push('zone');
     }
   }
@@ -259,15 +260,19 @@ export class Sim {
   private stepObstacles() {
     while (this.nextSpawnX - this.dist < VIEW_W + 60) this.spawnGroup();
 
-    for (const o of this.obstacles) {
+    const obstacles = this.obstacles;
+    for (let i = 0; i < obstacles.length; i++) {
+      const o = obstacles[i];
       if (!o.active) continue;
-      const size = OBSTACLE_SIZES[o.kind];
       const screenX = o.x - this.dist;
+      // Far to the right: nothing to do yet (the usual case).
+      if (screenX > ROBOT_X + ROBOT_SIZE) continue;
+      const size = OBSTACLE_SIZES[o.kind];
       if (screenX + size.w < -20) {
         o.active = false;
         continue;
       }
-      if (screenX > ROBOT_X + ROBOT_SIZE || screenX + size.w < ROBOT_X) continue;
+      if (screenX + size.w < ROBOT_X) continue;
       if (this.hits(screenX, size.w, size.h)) {
         this.alive = false;
         this.events.push('death');

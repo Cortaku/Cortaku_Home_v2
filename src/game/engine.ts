@@ -196,7 +196,8 @@ export class Engine {
 
   private readonly frame = (now: number) => {
     this.raf = requestAnimationFrame(this.frame);
-    const dt = Math.min(0.1, (now - this.last) / 1000);
+    // A frame's timestamp can be a little before the performance.now() it is measured from.
+    const dt = Math.max(0, Math.min(0.1, (now - this.last) / 1000));
     this.last = now;
     if (this.phase !== 'paused') this.update(dt);
     this.draw();

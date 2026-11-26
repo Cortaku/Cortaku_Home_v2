@@ -9,7 +9,9 @@
 // pointer; the sun stays put; each landmark crosses the screen once per pass of whole tiles (so it comes back on
 // the same patch of hill) instead of repeating with its layer.
 import { loadScene, type DayTime, type Scene } from './assets';
+import type { RoadPalette } from './road';
 import { SUN_X } from '../lib/site';
+import { watchPixelRatio } from '../lib/pixel-ratio';
 
 /** Per layer, sky first: seconds to drift one tile (0 = still), and px of lean at full pointer offset. */
 const SECONDS = [0, 240, 120, 60, 36];
@@ -45,17 +47,27 @@ export class Backdrop {
   private night: number;
   private nightTarget: number;
 
-  private current: Pair | null = null;
-  private previous: Pair | null = null;
-  private sceneFade = 1;
+  /**
+   * The scenes on screen, oldest first: the first is drawn solid, each later one fades in over those below
+   * (fade 0 to 1). Switching again mid-fade just adds another, so nothing on screen jumps.
+   */
+  private scenes: { pair: Pair; fade: number }[] = [];
   private sceneToken = 0;
 
   private onScreen = true;
   private readonly resizer: ResizeObserver;
+  private readonly stopPixelRatio: () => void;
   private readonly visibility: IntersectionObserver;
   private readonly htmlWatcher: MutationObserver;
 
-  constructor(private readonly canvas: HTMLCanvasElement) {
+  /**
+   * `onScene` hears each scene's road colours as it starts to show, so the road (CSS) can change with the
+   * scene rather than ahead of it.
+   */
+  constructor(
+    private readonly canvas: HTMLCanvasElement,
+    private readonly onScene?: (road: Record<DayTime, RoadPalette>) => void,
+  ) {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D is not available');
     this.ctx = ctx;
@@ -63,6 +75,7 @@ export class Backdrop {
 
     this.resizer = new ResizeObserver(() => this.resize());
     this.resizer.observe(canvas);
+    this.stopPixelRatio = watchPixelRatio(() => this.resize());
     this.visibility = new IntersectionObserver(([entry]) => {
       this.onScreen = entry.isIntersecting;
       // The road (CSS) pauses with the scene.
@@ -82,6 +95,7 @@ export class Backdrop {
     this.raf = 0;
     this.sceneToken += 1;
     this.resizer.disconnect();
+    this.stopPixelRatio();
     this.visibility.disconnect();
     this.htmlWatcher.disconnect();
     document.removeEventListener('visibilitychange', this.wake);
@@ -95,11 +109,13 @@ export class Backdrop {
       .then(([day, night]) => {
         if (token !== this.sceneToken) return;
         const pair = { set, day, night };
-        if (this.current && !this.reduced) {
-          this.previous = this.current;
-          this.sceneFade = 0;
+        if (this.scenes.length && !this.reduced) {
+          // No cap needed: each one is solid within SCENE_FADE_SECONDS, which drops everything under it.
+          this.scenes.push({ pair, fade: 0 });
+        } else {
+          this.scenes = [{ pair, fade: 1 }];
         }
-        this.current = pair;
+        this.onScene?.({ day: day.road, night: night.road });
         this.draw();
         this.wake();
       })
@@ -141,7 +157,8 @@ export class Backdrop {
   private readonly frame = (now: number) => {
     this.raf = 0;
     if (!this.shouldRun()) return;
-    const dt = Math.min(0.1, (now - this.last) / 1000);
+    // A frame's timestamp can be a little before the performance.now() taken in wake().
+    const dt = Math.max(0, Math.min(0.1, (now - this.last) / 1000));
     this.last = now;
 
     this.time += dt;
@@ -150,9 +167,14 @@ export class Backdrop {
       const step = dt / NIGHT_FADE_SECONDS;
       this.night = this.nightTarget > this.night ? Math.min(1, this.night + step) : Math.max(0, this.night - step);
     }
-    if (this.previous) {
-      this.sceneFade = Math.min(1, this.sceneFade + dt / SCENE_FADE_SECONDS);
-      if (this.sceneFade >= 1) this.previous = null;
+    for (let i = 1; i < this.scenes.length; i++) {
+      const scene = this.scenes[i];
+      scene.fade = Math.min(1, scene.fade + dt / SCENE_FADE_SECONDS);
+      // Fully faded in: everything below it is covered.
+      if (scene.fade >= 1) {
+        this.scenes.splice(0, i);
+        i = 0;
+      }
     }
 
     this.draw();
@@ -184,13 +206,8 @@ export class Backdrop {
     ctx.globalAlpha = 1;
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, width, height);
-    if (!this.current) return; // the .scene gradient shows until the art loads
-    if (this.previous) {
-      this.drawPair(this.previous, 1);
-      this.drawPair(this.current, smooth(this.sceneFade));
-    } else {
-      this.drawPair(this.current, 1);
-    }
+    // Until the art loads, the .scene gradient shows through.
+    this.scenes.forEach(({ pair, fade }, i) => this.drawPair(pair, i === 0 ? 1 : smooth(fade)));
     ctx.globalAlpha = 1;
   }
 

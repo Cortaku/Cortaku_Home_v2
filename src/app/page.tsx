@@ -39,15 +39,15 @@ export default function HomePage() {
         <section id="arcade" className="section">
           <div className="section-inner split">
             <div>
-              <p className="eyebrow">The arcade</p>
-              <h2>Meet Jumpbot!</h2>
+              <p className="eyebrow">Arcade</p>
+              <h2>Small bot. Big adventure.</h2>
               <ul className="howto">
-                <li>Press <kbd>Space</kbd> or tap to jump; hold for higher airtime.</li>
-                <li>Clear each zone for a new backdrop and faster pace.</li>
+                <li>Press <kbd>Space</kbd>, click, or tap to jump; hold for higher airtime.</li>
+                <li>Clear each zone for new views and a faster pace.</li>
                 <li>Compete on the Daily Run — one shared course, refreshed every 24 hours.</li>
               </ul>
               <h3 className="subhead">Robot skins</h3>
-              <p className="lede lede-sm">Hit score milestones to unlock new colors. Equip one to customize your robot across every run.</p>
+              <p className="lede lede-sm">Reach high scores to unlock new colors. Equip one to customize your robot across every run.</p>
               <SkinPicker />
             </div>
             <Leaderboard />
@@ -57,7 +57,7 @@ export default function HomePage() {
         <section id="apps" className="section section-alt">
           <div className="section-inner">
             <p className="eyebrow">Home base</p>
-            <h2>The self-hosted corner</h2>
+            <h2>Self-hosted corner</h2>
             <p className="lede">Private services running on the Cortaku homelab. Login required—mostly for personal use.</p>
             <AppLauncher />
           </div>

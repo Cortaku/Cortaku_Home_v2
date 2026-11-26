@@ -294,7 +294,15 @@ kbd {
 /* The 404 page sets background-position-x so the sun lands at the same fraction of the screen as of its tile. */
 .scene-sun { background-repeat: no-repeat; }
 
-/* Same road as the game (src/game/road.ts); Hero sets the --road-*-day/night colours from the scene. */
+/*
+ * Same road as the game (src/game/road.ts); Hero sets the --road-*-day/night colours from the scene.
+ * Registered as colours so they can fade with the scene behind (0.8 s, as in backdrop.ts) instead of snapping.
+ */
+@property --road-edge { syntax: '<color>'; inherits: false; initial-value: transparent; }
+@property --road-top { syntax: '<color>'; inherits: false; initial-value: transparent; }
+@property --road-lip { syntax: '<color>'; inherits: false; initial-value: transparent; }
+@property --road-face { syntax: '<color>'; inherits: false; initial-value: transparent; }
+@property --road-speck { syntax: '<color>'; inherits: false; initial-value: transparent; }
 .scene-ground {
   --u: calc(var(--scene-h) / 450);
   --road-edge: var(--road-edge-day, #a5aac3);
@@ -316,6 +324,7 @@ kbd {
     linear-gradient(var(--road-edge) 0 calc(var(--u) * 2), var(--road-top) 0 calc(var(--u) * 12),
       var(--road-lip) 0 calc(var(--u) * 13), var(--road-face) 0);
   animation: road-run 1.9s linear infinite;
+  transition: --road-edge 0.8s ease, --road-top 0.8s ease, --road-lip 0.8s ease, --road-face 0.8s ease, --road-speck 0.8s ease;
 }
 .dark .scene-ground {
   --road-edge: var(--road-edge-night, #92929d);
@@ -751,7 +760,7 @@ html[data-arcade-open] .scene-ground,
   html { scroll-behavior: auto; }
   .scene-ground, .party, .status, .mascot-sprite, .mascot-bubble, .lantern-tassel, .lantern-cord, .launcher-zzz span { animation: none !important; }
   .lantern-string { transition: none; }
-  .scene-stack { transition: none; }
+  .scene-stack, .scene-ground { transition: none; }
 }
 
 /* ---------- Shared arcade bits ---------- */
