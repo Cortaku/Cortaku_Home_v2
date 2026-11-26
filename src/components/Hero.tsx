@@ -108,6 +108,15 @@ export default function Hero() {
     return () => observer.disconnect();
   }, []);
 
+  // Pause the scene while it's scrolled out of view, so it isn't animating behind the rest of the page.
+  useEffect(() => {
+    const el = sceneRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => el.classList.toggle('is-offscreen', !entry.isIntersecting));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Colour the road from the scene's ground, for both day and night.
   useEffect(() => {
     const el = sceneRef.current;
